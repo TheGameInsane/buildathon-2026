@@ -1,7 +1,11 @@
 import { Controller, useFormContext } from "react-hook-form"
 import { Field } from "@/components/wizard/field"
 import { TagListInput } from "@/components/wizard/tag-list-input"
+import { Combobox } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
+import { MultiCombobox } from "@/components/ui/multi-combobox"
+import { COUNTRIES } from "@/lib/countries"
+import { JOB_TITLE_PRESETS } from "@/lib/job-titles"
 import type { WizardValues } from "@/types/wizard"
 
 export function WizardStepAudience() {
@@ -18,7 +22,18 @@ export function WizardStepAudience() {
           <Input id="wizard-industry" placeholder="SaaS" {...register("industry")} />
         </Field>
         <Field label="Location" htmlFor="wizard-geography" error={errors.geography?.message}>
-          <Input id="wizard-geography" placeholder="United States" {...register("geography")} />
+          <Controller
+            control={control}
+            name="geography"
+            render={({ field }) => (
+              <Combobox
+                value={field.value}
+                onChange={field.onChange}
+                options={[...COUNTRIES]}
+                placeholder="Search countries…"
+              />
+            )}
+          />
         </Field>
       </div>
 
@@ -27,13 +42,18 @@ export function WizardStepAudience() {
           control={control}
           name="targetRoles"
           render={({ field }) => (
-            <TagListInput value={field.value} onChange={field.onChange} placeholder="CTO, VP Engineering" />
+            <MultiCombobox
+              value={field.value}
+              onChange={field.onChange}
+              options={[...JOB_TITLE_PRESETS]}
+              placeholder="CTO, VP Engineering…"
+            />
           )}
         />
       </Field>
 
       <Field label="Company size" htmlFor="wizard-company-size" error={errors.companySizeRange?.message}>
-        <Input id="wizard-company-size" placeholder="50–500 employees" {...register("companySizeRange")} />
+        <Input id="wizard-company-size" placeholder="50 to 500 employees" {...register("companySizeRange")} />
       </Field>
 
       <Field label="Prospect filters: exclude" error={undefined}>

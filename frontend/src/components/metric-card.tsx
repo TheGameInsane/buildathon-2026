@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { cn } from "cn"
 import { useAnimatedNumber } from "@/hooks/use-animated-number"
+import { formatCompactNumber } from "@/lib/format"
 import { motion } from "@/lib/tokens"
 import type { LucideIcon } from "lucide-react"
 
@@ -30,7 +31,7 @@ function formatValue(value: number, format: MetricCardProps["format"]) {
         value / 100,
       )
     default:
-      return new Intl.NumberFormat().format(Math.round(value))
+      return formatCompactNumber(Math.round(value))
   }
 }
 

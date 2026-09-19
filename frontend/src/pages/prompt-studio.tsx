@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
-import { Check, Pencil } from "lucide-react"
+import { Link, useSearchParams } from "react-router-dom"
+import { ArrowLeft, Check, Pencil } from "lucide-react"
 import { cn } from "cn"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { PromptDiffView } from "@/components/prompt-diff-view"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -15,9 +24,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useCampaigns } from "@/hooks/use-campaigns"
+import { useCampaignSettings } from "@/hooks/use-campaign-settings"
+import { useRequestPromptApproval } from "@/hooks/use-inbox"
 import { useActivatePromptVersion, usePromptVersions, useSaveDraftPrompt } from "@/hooks/use-prompts"
+import { useAuth } from "@/hooks/use-auth"
 import { timeAgo } from "@/lib/format"
-import { CURRENT_MANAGER_NAME } from "@/lib/current-user"
 import { AGENT_PIPELINE_ORDER } from "@/types/domain"
 import type { AgentName } from "@/types/domain"
 
@@ -27,28 +38,100 @@ function evalScoreClassName(score: number) {
   return "text-status-attention"
 }
 
-function PromptStudioBody({ campaignId, campaignName, agent }: { campaignId: string; campaignName: string; agent: AgentName }) {
+/** Asks "what changed in this version" before the draft is created — never a silent save. */
+function ChangelogDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  submitting,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: (changelog: string) => void
+  submitting: boolean
+}) {
+  const [changelog, setChangelog] = useState("")
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next)
+        if (!next) setChangelog("")
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>What changed in this version?</DialogTitle>
+          <DialogDescription>Shown next to this version in the list, so the history stays readable.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label htmlFor="prompt-changelog">Changelog note</Label>
+          <Input
+            id="prompt-changelog"
+            value={changelog}
+            onChange={(e) => setChangelog(e.target.value)}
+            placeholder="e.g. Tightened the tone guidance for cold outreach"
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={!changelog.trim() || submitting}
+            onClick={() => {
+              onConfirm(changelog.trim())
+              setChangelog("")
+            }}
+          >
+            Save version
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PromptStudioBody({
+  campaignId,
+  campaignName,
+  agent,
+  requiresApproval,
+}: {
+  campaignId: string
+  campaignName: string
+  agent: AgentName
+  requiresApproval: boolean
+}) {
+  const { user } = useAuth()
+  const currentUserName = user?.name ?? ""
   const { data: versions, isLoading } = usePromptVersions(campaignId, agent)
   const activate = useActivatePromptVersion(campaignId, agent)
-  const saveDraft = useSaveDraftPrompt(campaignId, agent, CURRENT_MANAGER_NAME)
+  const requestApproval = useRequestPromptApproval()
+  const saveDraft = useSaveDraftPrompt(campaignId, agent, currentUserName)
 
-  const sorted = useMemo(() => [...(versions ?? [])].sort((a, b) => b.version - a.version), [versions])
+  // Oldest first, newest last: reads top-down like a changelog.
+  const sorted = useMemo(() => [...(versions ?? [])].sort((a, b) => a.version - b.version), [versions])
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null)
   const [editing, setEditing] = useState(false)
   const [draftText, setDraftText] = useState("")
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const [activateConfirmOpen, setActivateConfirmOpen] = useState(false)
 
   if (isLoading || sorted.length === 0) {
     return <Skeleton className="h-96 w-full" />
   }
 
-  const active = sorted.find((v) => v.active) ?? sorted[0]
+  const active = sorted.find((v) => v.active) ?? sorted[sorted.length - 1]
   const selected = sorted.find((v) => v.version === selectedVersion) ?? active
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
-        {/* Version list */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+        {/* Version list: oldest first, newest last */}
         <div className="flex flex-col gap-1 rounded-[10px] border border-border bg-surface p-2">
           {sorted.map((v) => (
             <button
@@ -69,14 +152,14 @@ function PromptStudioBody({ campaignId, campaignName, agent }: { campaignId: str
                   {v.evalScore > 0 ? `${v.evalScore}%` : "unscored"}
                 </span>
               </span>
-              <span className="text-xs text-text-secondary">
-                {v.author} · {timeAgo(v.timestamp)}
-              </span>
+              <span className="text-xs text-text-secondary">{timeAgo(v.timestamp)}</span>
+              <span className="text-xs text-text-secondary">by {v.author}</span>
+              {v.changelog && <span className="text-xs text-text-secondary italic">"{v.changelog}"</span>}
             </button>
           ))}
         </div>
 
-        {/* Diff / editor */}
+        {/* Full text of the selected version only: no side-by-side comparison. */}
         <div className="rounded-[10px] border border-border bg-surface p-4">
           {editing ? (
             <div className="flex flex-col gap-3">
@@ -94,24 +177,32 @@ function PromptStudioBody({ campaignId, campaignName, agent }: { campaignId: str
                 <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    saveDraft.mutate(draftText, {
-                      onSuccess: (draft) => {
-                        setSelectedVersion(draft.version)
-                        setEditing(false)
-                      },
-                    })
-                  }}
-                >
+                <Button type="button" onClick={() => setChangelogOpen(true)}>
                   Save as new draft
                 </Button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              <PromptDiffView left={selected} right={active} />
+              <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">
+                    v{selected.version}
+                    {selected.active && <span className="ml-1.5 text-xs font-normal text-text-secondary">(active)</span>}
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    {timeAgo(selected.timestamp)}, by {selected.author}
+                  </p>
+                </div>
+                {selected.evalScore > 0 && (
+                  <span className={cn("text-xs font-semibold tabular-nums", evalScoreClassName(selected.evalScore))}>
+                    eval {selected.evalScore}%
+                  </span>
+                )}
+              </div>
+              <pre className="max-h-[420px] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[13px] text-text-primary">
+                {selected.content}
+              </pre>
               <div className="flex flex-wrap gap-2 border-t border-border pt-3">
                 {selected.version !== active.version && (
                   <Button type="button" onClick={() => setActivateConfirmOpen(true)}>
@@ -129,19 +220,61 @@ function PromptStudioBody({ campaignId, campaignName, agent }: { campaignId: str
                   <Pencil /> Edit v{selected.version}
                 </Button>
               </div>
+              <p className="text-xs text-text-secondary">
+                Applies going forward only, prospects already in progress under the previous version are not
+                retroactively changed.
+              </p>
             </div>
           )}
         </div>
       </div>
 
+      <ChangelogDialog
+        open={changelogOpen}
+        onOpenChange={setChangelogOpen}
+        submitting={saveDraft.isPending}
+        onConfirm={(changelog) => {
+          saveDraft.mutate(
+            { content: draftText, changelog },
+            {
+              onSuccess: (draft) => {
+                setSelectedVersion(draft.version)
+                setEditing(false)
+                setChangelogOpen(false)
+              },
+            },
+          )
+        }}
+      />
+
       <ConfirmDialog
         open={activateConfirmOpen}
         onOpenChange={setActivateConfirmOpen}
-        title={`Activate v${selected.version} for ${agent}?`}
-        description={`This will only affect: ${campaignName} / ${agent}. Other campaigns and agents keep their own active version.`}
-        confirmLabel="Activate"
+        title={
+          requiresApproval
+            ? `Send v${selected.version} for approval?`
+            : `Activate v${selected.version} for ${agent}?`
+        }
+        description={
+          requiresApproval
+            ? `This campaign requires approval to activate prompts. v${selected.version} will only go live once approved from the Inbox.`
+            : `This will only affect: ${campaignName} / ${agent}. Other campaigns and agents keep their own active version.`
+        }
+        confirmLabel={requiresApproval ? "Send for approval" : "Activate"}
         tone="green"
-        onConfirm={() => activate.mutate(selected.version)}
+        onConfirm={() => {
+          if (requiresApproval) {
+            requestApproval.mutate({
+              campaignId,
+              campaignName,
+              agentName: agent,
+              version: selected.version,
+              requestedBy: currentUserName,
+            })
+          } else {
+            activate.mutate(selected.version)
+          }
+        }}
       />
     </>
   )
@@ -151,9 +284,11 @@ export function PromptStudio() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns()
 
-  const campaignId = searchParams.get("campaignId") ?? campaigns?.[0]?.id ?? ""
+  const campaignIdFromUrl = searchParams.get("campaignId")
+  const campaignId = campaignIdFromUrl ?? campaigns?.[0]?.id ?? ""
   const agent = (searchParams.get("agent") as AgentName | null) ?? AGENT_PIPELINE_ORDER[0]
   const campaignName = campaigns?.find((c) => c.id === campaignId)?.name ?? ""
+  const { data: settings } = useCampaignSettings(campaignId)
 
   if (campaignsLoading) {
     return (
@@ -174,6 +309,16 @@ export function PromptStudio() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Deep-linked from Campaign Detail > Agents/Prompts: keep the way back visible. */}
+      {campaignIdFromUrl && (
+        <Link
+          to={`/campaigns/${campaignIdFromUrl}/prompts`}
+          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-text-secondary hover:text-brand-600"
+        >
+          <ArrowLeft className="size-3.5" /> Back to {campaignName || "campaign"}
+        </Link>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold text-text-primary">Prompt Studio</h1>
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
@@ -204,7 +349,13 @@ export function PromptStudio() {
         </div>
       </div>
 
-      <PromptStudioBody key={`${campaignId}:${agent}`} campaignId={campaignId} campaignName={campaignName} agent={agent} />
+      <PromptStudioBody
+        key={`${campaignId}:${agent}`}
+        campaignId={campaignId}
+        campaignName={campaignName}
+        agent={agent}
+        requiresApproval={settings?.requiresApprovalToActivatePrompts ?? false}
+      />
     </div>
   )
 }

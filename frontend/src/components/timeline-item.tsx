@@ -4,6 +4,7 @@ import { cn } from "cn"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChannelIcon } from "@/components/channel-icon"
 import { GroundedBadge } from "@/components/grounded-badge"
+import { PersonalizationTierBadge } from "@/components/personalization-tier-badge"
 import { timeAgo } from "@/lib/format"
 import type { Channel } from "@/lib/tokens"
 import type { TimelineEvent } from "@/types/domain"
@@ -84,6 +85,7 @@ export function TimelineItem({ event, className }: TimelineItemProps) {
 
       <div className="flex items-center gap-2 pt-1">
         {event.groundedOk !== null && <GroundedBadge groundedOk={event.groundedOk} />}
+        {event.personalizationTier && <PersonalizationTierBadge tier={event.personalizationTier} />}
         <span className="text-xs text-text-secondary">prompt v{event.promptVersion}</span>
 
         <Collapsible open={open} onOpenChange={setOpen} className="ml-auto">

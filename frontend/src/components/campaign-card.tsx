@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChannelIcon } from "@/components/channel-icon"
 import { FunnelBar } from "@/components/funnel-bar"
-import { Sparkline } from "@/components/sparkline"
 import { StatusPill } from "@/components/status-pill"
 import { getCampaignFunnelSummary } from "@/lib/campaign-metrics"
+import { formatCompactNumber } from "@/lib/format"
 import type { Channel } from "@/lib/tokens"
 import type { Campaign } from "@/types/domain"
 
@@ -40,7 +40,7 @@ export interface CampaignCardProps {
   interactive?: boolean
 }
 
-/** The hero component of Mission Control — fully summarises one campaign. */
+/** The hero component of Overview — fully summarises one campaign. */
 export function CampaignCard({ campaign, onTogglePause, className, interactive = true }: CampaignCardProps) {
   const channelsToday = Object.entries(campaign.todayByChannel) as [Channel, number][]
   const todayTotal = channelsToday.reduce((sum, [, count]) => sum + count, 0)
@@ -57,14 +57,11 @@ export function CampaignCard({ campaign, onTogglePause, className, interactive =
         <StatusPill status={campaign.status} pulse />
       </div>
 
-      <div className="flex items-center justify-between">
-        <FunnelBar counts={campaign.funnelCounts} variant="mini" />
-        <Sparkline data={campaign.sparkline} />
-      </div>
+      <FunnelBar counts={campaign.funnelCounts} variant="mini" />
 
       <p className="text-xs text-text-secondary">
-        {summary.discovered.toLocaleString()} prospects · {campaign.touchCount.toLocaleString()}{" "}
-        touches · {summary.meetingsBooked.toLocaleString()} mtgs
+        {formatCompactNumber(summary.discovered)} prospects · {formatCompactNumber(campaign.touchCount)} touches ·{" "}
+        {formatCompactNumber(summary.meetingsBooked)} mtgs
       </p>
 
       <div className="flex items-center justify-between">

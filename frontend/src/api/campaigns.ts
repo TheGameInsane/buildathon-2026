@@ -4,12 +4,14 @@ import {
   archiveCampaign as archiveCampaignRecord,
   completeCampaign as completeCampaignRecord,
   createCampaign,
+  deleteCampaign as deleteCampaignRecord,
   duplicateCampaign as duplicateCampaignRecord,
   getCampaign,
   listCampaigns,
+  setCampaignCompletionFeedback,
   setCampaignStatus,
 } from "@/mocks/campaigns"
-import { seedCampaignSettings } from "@/mocks/campaign-settings"
+import { defaultStageConfigs, seedCampaignSettings } from "@/mocks/campaign-settings"
 import { listReps } from "@/mocks/reps"
 import { seedPromptsFromWizard } from "@/mocks/prompts"
 import type { AgentName, Campaign } from "@/types/domain"
@@ -45,6 +47,18 @@ export async function completeCampaign(id: string): Promise<void> {
 export async function archiveCampaign(id: string): Promise<void> {
   await delay()
   archiveCampaignRecord(id)
+}
+
+/** DELETE /campaigns/:id — permanent, unlike archive. */
+export async function deleteCampaign(id: string): Promise<void> {
+  await delay()
+  deleteCampaignRecord(id)
+}
+
+/** POST /campaigns/:id/completion-feedback — the completion feedback modal's submit action. */
+export async function submitCampaignCompletionFeedback(id: string, text: string, submittedBy: string): Promise<void> {
+  await delay()
+  setCampaignCompletionFeedback(id, { text, submittedBy, submittedAt: new Date().toISOString() })
 }
 
 /** POST /campaigns/:id/duplicate */
@@ -84,6 +98,8 @@ export async function createCampaignFromWizard(values: WizardValues): Promise<Ca
     },
     reps: allReps.filter((rep) => values.repIds.includes(rep.id)),
     demoSpeedMultiplier: "10min",
+    stages: defaultStageConfigs(),
+    requiresApprovalToActivatePrompts: false,
   })
 
   seedPromptsFromWizard(campaign.id, values.owner, values.agentPrompts as Record<AgentName, string>)

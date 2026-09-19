@@ -30,15 +30,17 @@ export function KillSwitchButton({ active, onActivate, className }: KillSwitchBu
     <>
       <Button
         type="button"
+        size="sm"
+        variant="outline"
         onClick={() => setOpen(true)}
         className={cn(
           active
-            ? "bg-status-attention text-white hover:bg-status-attention/90"
-            : "border border-status-attention bg-transparent text-status-attention hover:bg-status-attention/10",
+            ? "border-status-attention bg-status-attention text-white hover:bg-status-attention/90"
+            : "border-border bg-transparent text-text-secondary hover:border-status-attention/50 hover:bg-status-attention/10 hover:text-status-attention",
           className,
         )}
       >
-        <Power /> Kill Switch
+        <Power className="size-3.5" /> Kill switch
       </Button>
 
       <Dialog

@@ -15,7 +15,6 @@ const store: Campaign[] = [
     funnelCounts: [980, 860, 512, 340, 160, 22, 9],
     touchCount: 340,
     todayByChannel: { email: 6, linkedin: 2 },
-    sparkline: [3, 5, 4, 6, 8, 7, 9],
     owner: "Priya",
     repCount: 3,
     lastActivityAt: new Date(Date.now() - 14_000).toISOString(),
@@ -28,7 +27,6 @@ const store: Campaign[] = [
     funnelCounts: [640, 590, 380, 210, 95, 11, 4],
     touchCount: 210,
     todayByChannel: { email: 4, linkedin: 5 },
-    sparkline: [2, 3, 3, 5, 6, 8, 10],
     owner: "Priya",
     repCount: 2,
     lastActivityAt: new Date(Date.now() - 41_000).toISOString(),
@@ -41,7 +39,6 @@ const store: Campaign[] = [
     funnelCounts: [1284, 1180, 640, 426, 198, 18, 6],
     touchCount: 426,
     todayByChannel: { email: 8, whatsapp: 3, linkedin: 2 },
-    sparkline: [4, 6, 5, 8, 7, 10, 12],
     owner: "Priya",
     repCount: 3,
     lastActivityAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
@@ -54,14 +51,13 @@ const store: Campaign[] = [
     funnelCounts: [0, 0, 0, 0, 0, 0, 0],
     touchCount: 0,
     todayByChannel: {},
-    sparkline: [0, 0, 0, 0, 0, 0, 0],
     owner: "Priya",
     repCount: 0,
     lastActivityAt: new Date(Date.now() - 2 * 86_400_000).toISOString(),
   },
 ]
 
-/** Mission Control only shows active (non-archived) campaigns. */
+/** Overview only shows active (non-archived) campaigns. */
 export function listCampaigns(): Campaign[] {
   return store.filter((c) => !c.archived)
 }
@@ -91,6 +87,20 @@ export function archiveCampaign(id: string): void {
   if (campaign) campaign.archived = true
 }
 
+/** Permanently removes the campaign record. Unlike archive, this can't be undone. */
+export function deleteCampaign(id: string): void {
+  const index = store.findIndex((c) => c.id === id)
+  if (index !== -1) store.splice(index, 1)
+}
+
+export function setCampaignCompletionFeedback(
+  id: string,
+  feedback: NonNullable<Campaign["completionFeedback"]>,
+): void {
+  const campaign = store.find((c) => c.id === id)
+  if (campaign) campaign.completionFeedback = feedback
+}
+
 export interface NewCampaignInput {
   name: string
   icp: string
@@ -107,7 +117,6 @@ export function createCampaign(input: NewCampaignInput): Campaign {
     funnelCounts: [0, 0, 0, 0, 0, 0, 0],
     touchCount: 0,
     todayByChannel: {},
-    sparkline: [0, 0, 0, 0, 0, 0, 0],
     owner: input.owner,
     repCount: input.repCount,
     lastActivityAt: new Date().toISOString(),
@@ -133,7 +142,6 @@ export function duplicateCampaign(id: string): Campaign | undefined {
     touchCount: 0,
     todayByChannel: {},
     funnelCounts: [0, 0, 0, 0, 0, 0, 0],
-    sparkline: [0, 0, 0, 0, 0, 0, 0],
     lastActivityAt: new Date().toISOString(),
   }
   store.push(copy)

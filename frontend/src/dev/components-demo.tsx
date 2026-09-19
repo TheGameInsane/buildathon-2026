@@ -11,7 +11,6 @@ import { KillSwitchBanner, KillSwitchButton } from "@/components/kill-switch-but
 import { MetricCard } from "@/components/metric-card"
 import { NextBestActionCard } from "@/components/next-best-action-card"
 import { PreflightChecklist } from "@/components/preflight-checklist"
-import { PromptDiffView } from "@/components/prompt-diff-view"
 import { StatusPill } from "@/components/status-pill"
 import { TimelineItem } from "@/components/timeline-item"
 import { Button } from "@/components/ui/button"
@@ -22,7 +21,6 @@ import type {
   Channel,
   ConflictItem,
   EscalationItem,
-  PromptVersion,
   Status,
   TimelineEvent,
 } from "@/types/domain"
@@ -38,7 +36,6 @@ const campaign: Campaign = {
   funnelCounts: [1284, 1180, 640, 426, 198, 18, 6],
   touchCount: 426,
   todayByChannel: { email: 8, whatsapp: 3, linkedin: 1 },
-  sparkline: [4, 6, 5, 8, 7, 10, 12],
   owner: "Priya",
   repCount: 3,
   lastActivityAt: new Date(Date.now() - 60_000).toISOString(),
@@ -88,9 +85,11 @@ const approvalItem: ApprovalItem = {
   prospectName: "Adaline Cho",
   company: "Loop AI",
   campaignName: "US SaaS CTO",
+  campaignId: "us-saas-cto",
+  prospectId: "us-saas-cto-p4",
   timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
   channel: "email",
-  draftText: "Following up on … pricing depends on volume…",
+  draftText: "Following up on pricing, it depends on monthly volume.",
   flaggedReason: "Mentions pricing, needs approval",
 }
 
@@ -100,6 +99,8 @@ const escalationItem: EscalationItem = {
   prospectName: "Ravi Menon",
   company: "FinEdge",
   campaignName: "AI Founders Outreach",
+  campaignId: "ai-founders-outreach",
+  prospectId: "ai-founders-outreach-p2",
   timestamp: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
   reasonText: "Prospect asked a legal question the agent isn't authorised to answer.",
 }
@@ -110,29 +111,14 @@ const conflictItem: ConflictItem = {
   prospectName: "Ravi Menon",
   company: "FinEdge",
   campaignName: "AI Founders Outreach",
+  campaignId: "ai-founders-outreach",
+  prospectId: "ai-founders-outreach-p10",
   timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   campaignA: { name: "AI Founders Outreach", wants: "send email" },
   campaignB: { name: "Existing Customer Expansion", wants: "message on WhatsApp" },
 }
 
-const promptV2: PromptVersion = {
-  version: 2,
-  content: "You are Aditi, an SDR at Sarvam.\nUse ONLY facts from the knowledge base.",
-  author: "Priya",
-  timestamp: new Date(Date.now() - 3 * 86400 * 1000).toISOString(),
-  active: true,
-  evalScore: 78,
-}
 const activityFeedTimestamp = new Date(Date.now() - 14 * 1000).toISOString()
-
-const promptV3: PromptVersion = {
-  version: 3,
-  content: "You are Aditi, an SDR at Sarvam.\nUse ONLY facts from the knowledge base.\nNever mention discounts unless asked twice.",
-  author: "Priya",
-  timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  active: false,
-  evalScore: 91,
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -305,13 +291,12 @@ export function ComponentsDemo() {
               campaignName: "BFSI",
               timestamp: activityFeedTimestamp,
               prospectId: "p1",
+              reasonText: "Prospect confirmed a time slot after two rounds of scheduling back-and-forth.",
+              promptVersion: 2,
+              groundedOk: null,
             }}
           />
         </div>
-      </Section>
-
-      <Section title="PromptDiffView">
-        <PromptDiffView className="w-full" left={promptV2} right={promptV3} />
       </Section>
 
       <Section title="ConfirmDialog">

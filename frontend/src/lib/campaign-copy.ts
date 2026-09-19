@@ -1,4 +1,4 @@
-/** Shared pause/resume confirmation copy so Mission Control, Campaign Detail, and the Campaigns list never drift. */
+/** Shared pause/resume confirmation copy so Overview, Campaign Detail, and the Campaigns list never drift. */
 export const PAUSE_CAMPAIGN_COPY = {
   title: "Pause campaign?",
   description:

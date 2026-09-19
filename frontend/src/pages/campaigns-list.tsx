@@ -1,9 +1,16 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { Pause, Play, Plus, Search } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
+import { Copy, MoreVertical, Pause, Play, Plus, Search } from "lucide-react"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { CampaignPauseResumeDialog } from "@/components/campaign-pause-resume-dialog"
 import { StatusPill } from "@/components/status-pill"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -13,9 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCampaigns, useToggleCampaignPause } from "@/hooks/use-campaigns"
+import { useCampaignLifecycle, useCampaigns, useToggleCampaignPause } from "@/hooks/use-campaigns"
 import { getCampaignFunnelSummary } from "@/lib/campaign-metrics"
-import { timeAgo } from "@/lib/format"
+import { formatCompactNumber, timeAgo } from "@/lib/format"
 import type { Campaign, Status } from "@/types/domain"
 
 type StatusFilter = "all" | Status
@@ -64,14 +71,19 @@ function sortCampaigns(campaigns: Campaign[], sortKey: SortKey): Campaign[] {
   return withSummary.map((w) => w.campaign)
 }
 
+type LifecycleConfirm = { campaign: Campaign; kind: "complete" | "archive" | "delete" } | null
+
 export function CampaignsList() {
   const { data: campaigns, isLoading } = useCampaigns()
   const togglePause = useToggleCampaignPause()
+  const lifecycle = useCampaignLifecycle()
+  const navigate = useNavigate()
 
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [sortKey, setSortKey] = useState<SortKey>("lastActivity")
   const [confirmTarget, setConfirmTarget] = useState<Campaign | null>(null)
+  const [lifecycleConfirm, setLifecycleConfirm] = useState<LifecycleConfirm>(null)
 
   const visible = useMemo(() => {
     if (!campaigns) return []
@@ -166,57 +178,79 @@ export function CampaignsList() {
                 const summary = getCampaignFunnelSummary(campaign)
                 const canPause = campaign.status === "live" || campaign.status === "paused"
                 return (
-                  <tr key={campaign.id} className="hover:bg-canvas">
+                  <tr
+                    key={campaign.id}
+                    onClick={() => navigate(`/campaigns/${campaign.id}`)}
+                    className="cursor-pointer hover:bg-canvas"
+                  >
                     <td className="px-4 py-3">
-                      <Link
-                        to={`/campaigns/${campaign.id}`}
-                        className="font-medium text-text-primary hover:text-brand-600 hover:underline"
-                      >
-                        {campaign.name}
-                      </Link>
+                      <p className="font-medium text-text-primary">{campaign.name}</p>
                       <p className="text-xs text-text-secondary">{campaign.icp}</p>
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={campaign.status} pulse />
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-primary">
-                      {summary.discovered.toLocaleString()}
+                      {formatCompactNumber(summary.discovered)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-secondary">
-                      {summary.contacted.toLocaleString()}
+                      {formatCompactNumber(summary.contacted)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-secondary">
-                      {summary.engaged.toLocaleString()}
+                      {formatCompactNumber(summary.engaged)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-secondary">
-                      {summary.replied.toLocaleString()}
+                      {formatCompactNumber(summary.replied)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-primary">
-                      {summary.meetingsBooked.toLocaleString()}
+                      {formatCompactNumber(summary.meetingsBooked)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-text-primary">
                       {summary.conversionRate}%
                     </td>
                     <td className="px-4 py-3 text-text-secondary">{timeAgo(campaign.lastActivityAt)}</td>
                     <td className="px-4 py-3">
-                      {canPause && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setConfirmTarget(campaign)}
-                        >
-                          {campaign.status === "live" ? (
-                            <>
-                              <Pause /> Pause
-                            </>
-                          ) : (
-                            <>
-                              <Play /> Resume
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {canPause && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setConfirmTarget(campaign)}
+                          >
+                            {campaign.status === "live" ? (
+                              <>
+                                <Pause /> Pause
+                              </>
+                            ) : (
+                              <>
+                                <Play /> Resume
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon-sm" aria-label={`More actions for ${campaign.name}`}>
+                              <MoreVertical />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => lifecycle.duplicate.mutate(campaign.id)}>
+                              <Copy /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setLifecycleConfirm({ campaign, kind: "complete" })}>
+                              Mark as completed
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => setLifecycleConfirm({ campaign, kind: "archive" })}>
+                              Archive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" onClick={() => setLifecycleConfirm({ campaign, kind: "delete" })}>
+                              Delete campaign
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -234,6 +268,39 @@ export function CampaignsList() {
           onConfirm={() => togglePause.mutate(confirmTarget)}
         />
       )}
+
+      <ConfirmDialog
+        open={lifecycleConfirm !== null}
+        onOpenChange={(open) => !open && setLifecycleConfirm(null)}
+        title={
+          lifecycleConfirm?.kind === "archive"
+            ? `Archive ${lifecycleConfirm.campaign.name}?`
+            : lifecycleConfirm?.kind === "delete"
+              ? `Permanently delete ${lifecycleConfirm.campaign.name}?`
+              : `Mark ${lifecycleConfirm?.campaign.name} as completed?`
+        }
+        description={
+          lifecycleConfirm?.kind === "archive"
+            ? "This removes it from Overview. It can still be found from Compare and reporting."
+            : lifecycleConfirm?.kind === "delete"
+              ? "This permanently deletes the campaign and its data. This can't be undone."
+              : "This stops active outreach and moves the campaign to Completed."
+        }
+        confirmLabel={
+          lifecycleConfirm?.kind === "archive"
+            ? "Archive"
+            : lifecycleConfirm?.kind === "delete"
+              ? "Delete permanently"
+              : "Mark completed"
+        }
+        tone={lifecycleConfirm?.kind === "complete" ? "green" : "red"}
+        onConfirm={() => {
+          if (!lifecycleConfirm) return
+          if (lifecycleConfirm.kind === "archive") lifecycle.archive.mutate(lifecycleConfirm.campaign.id)
+          if (lifecycleConfirm.kind === "delete") lifecycle.remove.mutate(lifecycleConfirm.campaign.id)
+          if (lifecycleConfirm.kind === "complete") lifecycle.complete.mutate(lifecycleConfirm.campaign.id)
+        }}
+      />
     </div>
   )
 }

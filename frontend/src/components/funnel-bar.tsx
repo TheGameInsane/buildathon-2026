@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react"
 import { cn } from "cn"
+import { formatCompactNumber } from "@/lib/format"
 import { FUNNEL_STAGES } from "@/types/domain"
 
 export interface FunnelBarProps {
@@ -15,17 +16,17 @@ export function FunnelBar({ counts, onSegmentClick, variant = "full", className 
 
   if (variant === "mini") {
     return (
-      <div className={cn("flex items-center gap-1 text-xs text-text-secondary", className)}>
+      <div className={cn("flex min-w-0 items-center gap-1 text-xs text-text-secondary", className)}>
         {counts.map((count, i) => (
-          <span key={FUNNEL_STAGES[i]} className="flex items-center gap-1">
+          <span key={FUNNEL_STAGES[i]} className="flex shrink-0 items-center gap-1">
             <button
               type="button"
               onClick={() => onSegmentClick?.(i)}
               className="tabular-nums font-medium text-text-primary hover:text-brand-600 hover:underline"
             >
-              {count.toLocaleString()}
+              {formatCompactNumber(count)}
             </button>
-            {i < counts.length - 1 && <ChevronRight className="size-3" />}
+            {i < counts.length - 1 && <ChevronRight className="size-3 shrink-0" />}
           </span>
         ))}
       </div>
@@ -54,7 +55,7 @@ export function FunnelBar({ counts, onSegmentClick, variant = "full", className 
               </span>
             </span>
             <span className="text-lg font-semibold tabular-nums text-text-primary">
-              {count.toLocaleString()}
+              {formatCompactNumber(count)}
             </span>
             <span className="text-xs text-text-secondary">{FUNNEL_STAGES[i]}</span>
           </button>

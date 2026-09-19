@@ -57,8 +57,9 @@
     color-scheme: dark;
 
     /* Design System > Colour tokens (source of truth, see src/lib/tokens.ts) */
+    /* The 5 status colours + brand/accent are the entire vocabulary and never change between themes.
+       Only surface/background/text tokens are redefined per theme below. */
     --brand-600: #2e7dff;
-    --brand-50: #142248;
     --accent-cyan: #22d3ee;
     --accent-lime: #a3e635;
     --status-live: #22c55e;
@@ -66,6 +67,8 @@
     --status-draft: #6b7a99;
     --status-completed: #6366f1;
     --status-attention: #ef4444;
+
+    --brand-50: #142248;
     --surface: #10162a;
     --surface-raised: #161d35;
     --canvas: #0a0e1a;
@@ -75,6 +78,19 @@
 
     /* Card radius 10px; radius-md (8px) drives buttons/inputs, radius-full drives pills */
     --radius: 0.625rem;
+}
+
+/* Light mode: same brand/status/accent colours, different surface/background/text tokens. */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    --brand-50: #e8f0ff;
+    --surface: #ffffff;
+    --surface-raised: #f8fafc;
+    --canvas: #f1f5f9;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #5b6b85;
 }
 
 @layer base {

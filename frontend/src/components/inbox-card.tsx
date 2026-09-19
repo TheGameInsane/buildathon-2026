@@ -1,12 +1,13 @@
-import { useState, type ReactNode } from "react"
-import { AlertTriangle } from "lucide-react"
+import { useState, type MouseEvent, type ReactNode } from "react"
+import { useNavigate } from "react-router-dom"
+import { AlertTriangle, GitBranch } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChannelIcon } from "@/components/channel-icon"
 import { icons } from "@/lib/tokens"
 import { timeAgo } from "@/lib/format"
-import type { ApprovalItem, ConflictItem, EscalationItem } from "@/types/domain"
+import type { ApprovalItem, ConflictItem, EscalationItem, PromptApprovalItem } from "@/types/domain"
 
 interface InboxCardBaseProps {
   icon: typeof icons.approval
@@ -17,9 +18,11 @@ interface InboxCardBaseProps {
   children: ReactNode
   actions: ReactNode
   className?: string
+  /** The whole card is this click target; omit while editing so an in-progress draft can't be navigated away from. */
+  onCardClick?: () => void
 }
 
-/** Shared shape for Approval/Escalation/Conflict — each varies accent, icon, and buttons. */
+/** Shared shape for Approval/Escalation/Conflict/PromptApproval — each varies accent, icon, and buttons. */
 function InboxCardBase({
   icon: Icon,
   accentClassName,
@@ -29,11 +32,26 @@ function InboxCardBase({
   children,
   actions,
   className,
+  onCardClick,
 }: InboxCardBaseProps) {
   return (
     <div
+      role={onCardClick ? "button" : undefined}
+      tabIndex={onCardClick ? 0 : undefined}
+      onClick={onCardClick}
+      onKeyDown={
+        onCardClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onCardClick()
+              }
+            }
+          : undefined
+      }
       className={cn(
         "flex flex-col gap-2 rounded-[10px] border border-border border-l-4 bg-surface p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.02)] transition-shadow hover:shadow-[0_8px_24px_-16px_rgba(0,0,0,0.6)]",
+        onCardClick && "cursor-pointer",
         accentClassName,
         className,
       )}
@@ -45,9 +63,16 @@ function InboxCardBase({
         </span>
       </div>
       {children}
-      <div className="flex flex-wrap gap-2 pt-1">{actions}</div>
+      {/* Actions opt out of the card-level click so Approve/Edit/etc. never also navigate. */}
+      <div className="flex flex-wrap gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+        {actions}
+      </div>
     </div>
   )
+}
+
+function stopClick(e: MouseEvent) {
+  e.stopPropagation()
 }
 
 export interface ApprovalCardProps {
@@ -60,8 +85,10 @@ export interface ApprovalCardProps {
 }
 
 export function ApprovalCard({ item, onApprove, onSaveEdit, onReject, className }: ApprovalCardProps) {
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.draftText)
+  const openProspect = () => navigate(`/campaigns/${item.campaignId}/prospects/${item.prospectId}`)
 
   if (editing) {
     return (
@@ -98,7 +125,7 @@ export function ApprovalCard({ item, onApprove, onSaveEdit, onReject, className 
           </>
         }
       >
-        <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4} autoFocus />
+        <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onClick={stopClick} rows={4} autoFocus />
       </InboxCardBase>
     )
   }
@@ -111,6 +138,7 @@ export function ApprovalCard({ item, onApprove, onSaveEdit, onReject, className 
       context={`${item.prospectName} (${item.company}) · ${item.campaignName}`}
       timestamp={item.timestamp}
       className={className}
+      onCardClick={openProspect}
       actions={
         <>
           <Button type="button" size="sm" onClick={onApprove}>
@@ -147,8 +175,10 @@ export interface EscalationCardProps {
 }
 
 export function EscalationCard({ item, onTakeOver, onReassign, onDismiss, className }: EscalationCardProps) {
+  const navigate = useNavigate()
   const [composing, setComposing] = useState(false)
   const [reply, setReply] = useState("")
+  const openProspect = () => navigate(`/campaigns/${item.campaignId}/prospects/${item.prospectId}`)
 
   if (composing) {
     return (
@@ -182,6 +212,7 @@ export function EscalationCard({ item, onTakeOver, onReassign, onDismiss, classN
         <Textarea
           value={reply}
           onChange={(e) => setReply(e.target.value)}
+          onClick={stopClick}
           placeholder="Reply as yourself…"
           rows={3}
           autoFocus
@@ -198,6 +229,7 @@ export function EscalationCard({ item, onTakeOver, onReassign, onDismiss, classN
       context={`${item.prospectName} (${item.company}) · ${item.campaignName}`}
       timestamp={item.timestamp}
       className={className}
+      onCardClick={openProspect}
       actions={
         <>
           <Button type="button" size="sm" onClick={() => setComposing(true)}>
@@ -217,6 +249,45 @@ export function EscalationCard({ item, onTakeOver, onReassign, onDismiss, classN
   )
 }
 
+export interface PromptApprovalCardProps {
+  item: PromptApprovalItem
+  onApprove?: () => void
+  onReject?: () => void
+  className?: string
+}
+
+/** Prompt Studio's Activate routes here when the campaign requires approval, instead of activating right away. */
+export function PromptApprovalCard({ item, onApprove, onReject, className }: PromptApprovalCardProps) {
+  const navigate = useNavigate()
+
+  return (
+    <InboxCardBase
+      icon={icons.promptVersion}
+      accentClassName="border-l-brand-600"
+      iconClassName="text-brand-600"
+      context={`${item.campaignName} · ${item.agentName} Agent`}
+      timestamp={item.timestamp}
+      className={className}
+      onCardClick={() => navigate(`/prompt-studio?campaignId=${item.campaignId}&agent=${encodeURIComponent(item.agentName)}`)}
+      actions={
+        <>
+          <Button type="button" size="sm" onClick={onApprove}>
+            Approve and activate
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onReject}>
+            Reject
+          </Button>
+        </>
+      }
+    >
+      <p className="inline-flex items-center gap-1.5 text-sm text-text-primary">
+        <GitBranch className="size-4 text-text-secondary" />
+        {item.requestedBy} wants to activate v{item.version} for {item.agentName}
+      </p>
+    </InboxCardBase>
+  )
+}
+
 export interface ConflictCardProps {
   item: ConflictItem
   onKeepDefault?: () => void
@@ -226,14 +297,17 @@ export interface ConflictCardProps {
 }
 
 export function ConflictCard({ item, onKeepDefault, onOverride, onSlowCadence, className }: ConflictCardProps) {
+  const navigate = useNavigate()
+
   return (
     <InboxCardBase
       icon={icons.conflict}
-      accentClassName="border-l-purple-500"
-      iconClassName="text-purple-600"
+      accentClassName="border-l-slate-500"
+      iconClassName="text-slate-500"
       context={`${item.prospectName} in 2 campaigns`}
       timestamp={item.timestamp}
       className={className}
+      onCardClick={() => navigate(`/campaigns/${item.campaignId}/prospects/${item.prospectId}`)}
       actions={
         <>
           <Button type="button" size="sm" onClick={onKeepDefault}>
@@ -250,12 +324,10 @@ export function ConflictCard({ item, onKeepDefault, onOverride, onSlowCadence, c
     >
       <div className="grid grid-cols-1 gap-3 rounded-md bg-canvas p-2 text-xs sm:grid-cols-2">
         <p>
-          <span className="font-medium text-text-primary">{item.campaignA.name}</span> wants to:{" "}
-          {item.campaignA.wants}
+          <span className="font-medium text-text-primary">{item.campaignA.name}</span> wants to {item.campaignA.wants}
         </p>
         <p>
-          <span className="font-medium text-text-primary">{item.campaignB.name}</span> wants to:{" "}
-          {item.campaignB.wants}
+          <span className="font-medium text-text-primary">{item.campaignB.name}</span> wants to {item.campaignB.wants}
         </p>
       </div>
     </InboxCardBase>

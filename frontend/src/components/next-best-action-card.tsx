@@ -1,7 +1,8 @@
-import { Check, Pencil, X } from "lucide-react"
+import { Check, MousePointerClick, Pencil, X } from "lucide-react"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { ChannelIcon } from "@/components/channel-icon"
+import { PersonalizationTierBadge } from "@/components/personalization-tier-badge"
 import type { NextBestAction } from "@/types/domain"
 
 export interface NextBestActionCardProps {
@@ -20,6 +21,7 @@ export function NextBestActionCard({ action, onApprove, onEdit, onSkip, classNam
       <p className="inline-flex items-center gap-1.5 text-sm text-text-primary">
         <ChannelIcon channel={action.channel} />
         {action.intent}, {action.when}
+        {action.personalizationTier && <PersonalizationTierBadge tier={action.personalizationTier} />}
       </p>
       <p className="text-xs text-text-secondary">
         <span className="font-medium text-text-primary">Why:</span> {action.reasonText}
@@ -28,7 +30,14 @@ export function NextBestActionCard({ action, onApprove, onEdit, onSkip, classNam
         <p className="rounded-md bg-canvas p-2 text-xs text-text-primary">"{action.draftContent}"</p>
       )}
 
-      {action.requiresApproval ? (
+      {action.requiresManualExecution ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-text-secondary">Queued for manual execution</span>
+          <Button type="button" size="sm" onClick={onApprove}>
+            <MousePointerClick /> Execute
+          </Button>
+        </div>
+      ) : action.requiresApproval ? (
         <div className="flex gap-2">
           <Button type="button" size="sm" onClick={onApprove}>
             <Check /> Approve

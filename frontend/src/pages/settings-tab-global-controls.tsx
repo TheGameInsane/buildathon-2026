@@ -10,8 +10,8 @@ import {
   useGlobalControls,
   useSetChannelPause,
 } from "@/hooks/use-global-controls"
+import { useAuth } from "@/hooks/use-auth"
 import { timeAgo } from "@/lib/format"
-import { CURRENT_MANAGER_NAME } from "@/lib/current-user"
 import type { Channel } from "@/types/domain"
 
 const ALL_CHANNELS: Channel[] = ["email", "whatsapp", "linkedin"]
@@ -22,6 +22,7 @@ const CHANNEL_LABEL: Record<Channel, string> = {
 }
 
 export function SettingsTabGlobalControls() {
+  const { user } = useAuth()
   const { data, isLoading } = useGlobalControls()
   const activateKillSwitch = useActivateKillSwitch()
   const deactivateKillSwitch = useDeactivateKillSwitch()
@@ -59,7 +60,7 @@ export function SettingsTabGlobalControls() {
         )}
 
         <div className="flex items-center gap-3">
-          <KillSwitchButton active={killSwitch.active} onActivate={() => activateKillSwitch.mutate(CURRENT_MANAGER_NAME)} />
+          <KillSwitchButton active={killSwitch.active} onActivate={() => activateKillSwitch.mutate(user?.name ?? "")} />
           {killSwitch.active && (
             <button
               type="button"

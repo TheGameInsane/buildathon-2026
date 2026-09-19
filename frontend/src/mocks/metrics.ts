@@ -2,7 +2,7 @@ import { getCampaign } from "@/mocks/campaigns"
 import { getCampaignFunnelSummary } from "@/lib/campaign-metrics"
 import type { CampaignMetrics } from "@/types/domain"
 
-/** Derives Overview-tab metrics from the shared funnel summary so every number matches the Campaigns list and Mission Control. */
+/** Derives Overview-tab metrics from the shared funnel summary so every number matches the Campaigns list and Overview. */
 export function getCampaignMetrics(campaignId: string): CampaignMetrics | undefined {
   const campaign = getCampaign(campaignId)
   if (!campaign) return undefined
@@ -11,9 +11,12 @@ export function getCampaignMetrics(campaignId: string): CampaignMetrics | undefi
   const responseRate =
     summary.contacted > 0 ? Math.round((campaign.touchCount / summary.contacted) * 100 * 0.7) : 0
   const noReply = Math.max(summary.discovered - summary.contacted - summary.meetingsBooked, 0)
+  const touchesSentToday = Object.values(campaign.todayByChannel).reduce((sum, n) => sum + (n ?? 0), 0)
 
   return {
     funnelCounts: campaign.funnelCounts,
+    touchesSentToday,
+    prospectsResearchedToday: Math.max(3, Math.round(campaign.touchCount * 0.02)),
     meetings: summary.meetingsBooked,
     meetingsDelta: 4,
     responseRate,

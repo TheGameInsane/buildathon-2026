@@ -7,7 +7,7 @@ export interface Crumb {
   to?: string
 }
 
-/** Shown at the top of any screen more than one level from Mission Control. */
+/** Shown at the top of any screen more than one level from Overview. */
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
   return (
     <nav className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-text-secondary">

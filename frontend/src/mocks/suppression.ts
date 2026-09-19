@@ -31,3 +31,12 @@ export function listSuppressionEntries(): SuppressionEntry[] {
 export function removeFromSuppression(id: string): void {
   store = store.filter((e) => e.id !== id)
 }
+
+/** Auto-suppress after exactly one hard bounce (no-op if this email is already suppressed). */
+export function suppressForBounce(prospectName: string, email: string): void {
+  if (store.some((e) => e.email === email)) return
+  store = [
+    ...store,
+    { id: `sup-bounce-${email}`, prospectName, email, reason: "bounced", addedAt: new Date().toISOString() },
+  ]
+}

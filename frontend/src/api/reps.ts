@@ -1,5 +1,13 @@
 import { delay } from "@/api/delay"
-import { addRep, listAssignmentsForRep, listReps, reassignCampaignRep, setRepActive } from "@/mocks/reps"
+import {
+  addRep,
+  assignRepToCampaign,
+  listAssignmentsForRep,
+  listReps,
+  reassignCampaignRep,
+  setRepActive,
+  unassignRepFromCampaign,
+} from "@/mocks/reps"
 import type { RepAssignment, RepRef, RepWithAssignments } from "@/types/domain"
 
 /** GET /reps */
@@ -39,4 +47,16 @@ export async function offboardRep(input: OffboardRepInput): Promise<void> {
     reassignCampaignRep(campaignId, input.repId, newRepId)
   }
   setRepActive(input.repId, false)
+}
+
+/** POST /campaigns/:id/reps — assign an existing rep to this campaign. */
+export async function assignRepToCampaignApi(campaignId: string, repId: string): Promise<void> {
+  await delay()
+  assignRepToCampaign(campaignId, repId)
+}
+
+/** DELETE /campaigns/:id/reps/:repId — unassign a rep from this campaign only. */
+export async function unassignRepFromCampaignApi(campaignId: string, repId: string): Promise<void> {
+  await delay()
+  unassignRepFromCampaign(campaignId, repId)
 }

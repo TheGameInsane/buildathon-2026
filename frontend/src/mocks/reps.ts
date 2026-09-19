@@ -51,3 +51,17 @@ export function reassignCampaignRep(campaignId: string, oldRepId: string, newRep
     reps: replacement ? [...withoutOld, replacement] : withoutOld,
   })
 }
+
+/** Assigns an existing global rep to a campaign (Campaign Settings > Reps). No-op if already assigned. */
+export function assignRepToCampaign(campaignId: string, repId: string): void {
+  const settings = getCampaignSettings(campaignId)
+  if (settings.reps.some((r) => r.id === repId)) return
+  const rep = getRep(repId)
+  if (!rep) return
+  updateCampaignSettings(campaignId, { reps: [...settings.reps, rep] })
+}
+
+/** Unassigns a rep from a campaign only — doesn't touch the rep's global active state. */
+export function unassignRepFromCampaign(campaignId: string, repId: string): void {
+  reassignCampaignRep(campaignId, repId, null)
+}

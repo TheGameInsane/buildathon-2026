@@ -53,6 +53,9 @@ function seedProspects(campaignId: string): KanbanProspect[] {
         lastRepliedAt: hasReplied ? new Date(Date.now() - (n % 5) * 86_400_000).toISOString() : null,
         nextActionChannel: stageIndex < 6 ? CHANNELS[n % CHANNELS.length] : undefined,
         stageIndex,
+        // Spread across 0-40h ago so action-window badges (on the Qualified/Engaged stages) show
+        // a mix of comfortable, amber, and overdue states in the demo.
+        stageEnteredAt: new Date(Date.now() - (((n * 7) % 40) * 3_600_000)).toISOString(),
       })
     }
   })

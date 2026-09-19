@@ -5,17 +5,19 @@ import {
   archiveCampaign,
   completeCampaign,
   createCampaignFromWizard,
+  deleteCampaign,
   duplicateCampaign,
   fetchCampaigns,
   pauseCampaign,
   resumeCampaign,
+  submitCampaignCompletionFeedback,
 } from "@/api/campaigns"
 import { pollIntervalMs } from "@/lib/tokens"
 import type { Campaign } from "@/types/domain"
 
 export const campaignsQueryKey = ["campaigns"] as const
 
-/** Mission Control and the Campaign Overview tab poll every 5s (Design System > Auto-refresh). */
+/** Overview and the Campaign Overview tab poll every 5s (Design System > Auto-refresh). */
 export function useCampaigns() {
   return useQuery({
     queryKey: campaignsQueryKey,
@@ -97,7 +99,28 @@ export function useCampaignLifecycle() {
     },
   })
 
-  return { complete, archive, duplicate }
+  const remove = useMutation({
+    mutationFn: deleteCampaign,
+    onSuccess: () => {
+      toast.success("Campaign deleted.")
+      invalidate()
+    },
+  })
+
+  return { complete, archive, duplicate, remove }
+}
+
+/** Campaign Settings' post-completion feedback modal. */
+export function useSubmitCompletionFeedback() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ campaignId, text, submittedBy }: { campaignId: string; text: string; submittedBy: string }) =>
+      submitCampaignCompletionFeedback(campaignId, text, submittedBy),
+    onSuccess: () => {
+      toast.success("Thanks, feedback saved on the campaign.")
+      queryClient.invalidateQueries({ queryKey: campaignsQueryKey })
+    },
+  })
 }
 
 /** New Campaign Wizard: created once, on arrival at step 6 (Flow 1). */

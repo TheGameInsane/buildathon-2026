@@ -1,6 +1,26 @@
-import type { CampaignSettingsData } from "@/types/domain"
+import { FUNNEL_STAGES } from "@/types/domain"
+import type { CampaignSettingsData, StageConfig } from "@/types/domain"
 
 const store = new Map<string, CampaignSettingsData>()
+
+/** Manager-defined defaults, one per FUNNEL_STAGES index. Only a couple carry an action window, matching the request's example. */
+export function defaultStageConfigs(): StageConfig[] {
+  const configs: Record<string, Partial<StageConfig>> = {
+    Qualified: { entryCriteria: "fit_score >= 70", exitCriteria: "touches_count >= 1", actionWindowHours: 24 },
+    Contacted: { entryCriteria: "touches_count >= 1", exitCriteria: "engagement_score >= 30" },
+    Engaged: {
+      entryCriteria: "engagement_score >= 30",
+      exitCriteria: "meeting_booked == true",
+      actionWindowHours: 48,
+    },
+  }
+  return FUNNEL_STAGES.map((stage) => ({
+    stage,
+    entryCriteria: configs[stage]?.entryCriteria ?? "",
+    exitCriteria: configs[stage]?.exitCriteria ?? "",
+    actionWindowHours: configs[stage]?.actionWindowHours,
+  }))
+}
 
 function seedSettings(): CampaignSettingsData {
   return {
@@ -24,6 +44,8 @@ function seedSettings(): CampaignSettingsData {
       { id: "rep-2", name: "Dev Patel", email: "dev@company.com", dailyCap: 50, workingHours: "9am–6pm", active: true },
     ],
     demoSpeedMultiplier: "10min",
+    stages: defaultStageConfigs(),
+    requiresApprovalToActivatePrompts: false,
   }
 }
 

@@ -31,7 +31,8 @@ export async function saveDraftPrompt(
   agent: AgentName,
   content: string,
   author: string,
+  changelog: string,
 ): Promise<PromptVersion> {
   await delay()
-  return createDraftPromptVersion(campaignId, agent, content, author)
+  return createDraftPromptVersion(campaignId, agent, content, author, changelog)
 }

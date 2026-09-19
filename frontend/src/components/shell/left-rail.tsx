@@ -3,7 +3,7 @@ import { BarChart3, GitBranch, Inbox as InboxIcon, LayoutDashboard, Megaphone, S
 import { cn } from "cn"
 
 const navItems = [
-  { to: "/", label: "Mission Control", icon: LayoutDashboard, end: true },
+  { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/inbox", label: "Inbox", icon: InboxIcon },
   { to: "/prompt-studio", label: "Prompt Studio", icon: GitBranch },

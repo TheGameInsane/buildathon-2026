@@ -50,6 +50,16 @@ export function CampaignOverviewTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      {campaign.completionFeedback && (
+        <div className="rounded-[10px] border border-status-completed/30 bg-surface p-4">
+          <p className="text-sm font-semibold text-text-primary">Completion feedback</p>
+          <p className="mt-1 text-sm text-text-primary">{campaign.completionFeedback.text}</p>
+          <p className="mt-2 text-xs text-text-secondary">
+            {campaign.completionFeedback.submittedBy} · {new Date(campaign.completionFeedback.submittedAt).toLocaleDateString()}
+          </p>
+        </div>
+      )}
+
       <div className="rounded-[10px] border border-border bg-surface p-4">
         <FunnelBar
           counts={metrics.funnelCounts}
@@ -57,32 +67,46 @@ export function CampaignOverviewTab() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <MetricCard value={metrics.meetings} label="Meetings" delta={metrics.meetingsDelta} trend="up" goodDirection="up" />
-        <MetricCard
-          value={metrics.responseRate}
-          label="Response rate"
-          delta={metrics.responseRateDelta}
-          trend="up"
-          goodDirection="up"
-          format="percent"
-        />
-        <MetricCard
-          value={metrics.costPerQualifiedLead}
-          label="Cost / qualified lead"
-          delta={metrics.costPerQualifiedLeadDelta}
-          trend="down"
-          goodDirection="down"
-          format="currency"
-        />
-        <MetricCard
-          value={metrics.meetingConversionRate}
-          label="→ meeting conversion"
-          delta={metrics.meetingConversionRateDelta}
-          trend="up"
-          goodDirection="up"
-          format="percent"
-        />
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Input</p>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+          <MetricCard value={metrics.touchesSentToday} label="Touches sent today" />
+          <MetricCard value={metrics.prospectsResearchedToday} label="Prospects researched today" />
+          <MetricCard value={campaign.todayByChannel.email ?? 0} label="Email actions today" />
+          <MetricCard value={campaign.todayByChannel.whatsapp ?? 0} label="WhatsApp actions today" />
+          <MetricCard value={campaign.todayByChannel.linkedin ?? 0} label="LinkedIn actions today" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Output</p>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <MetricCard value={metrics.meetings} label="Meetings" delta={metrics.meetingsDelta} trend="up" goodDirection="up" />
+          <MetricCard
+            value={metrics.responseRate}
+            label="Response rate"
+            delta={metrics.responseRateDelta}
+            trend="up"
+            goodDirection="up"
+            format="percent"
+          />
+          <MetricCard
+            value={metrics.costPerQualifiedLead}
+            label="Cost / qualified lead"
+            delta={metrics.costPerQualifiedLeadDelta}
+            trend="down"
+            goodDirection="down"
+            format="currency"
+          />
+          <MetricCard
+            value={metrics.meetingConversionRate}
+            label="→ meeting conversion"
+            delta={metrics.meetingConversionRateDelta}
+            trend="up"
+            goodDirection="up"
+            format="percent"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -2,7 +2,7 @@ import type { Campaign } from "@/types/domain"
 
 /**
  * Single source of truth for every derived campaign number. Every screen
- * (Mission Control, Campaigns list, Campaign Detail, charts, filters) reads
+ * (Overview, Campaigns list, Campaign Detail, charts, filters) reads
  * through this function instead of re-deriving or hardcoding its own numbers,
  * so a discovered/contacted/engaged/meetings count always means the same
  * thing everywhere it's shown.

@@ -2,11 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   fetchInboxItems,
+  requestPromptApproval,
   resolveApprovalItem,
   resolveConflictItem,
   resolveEscalationItem,
+  resolvePromptApprovalItem,
   type ApprovalResolution,
   type EscalationResolution,
+  type PromptApprovalResolution,
 } from "@/api/inbox"
 
 const inboxItemsQueryKey = ["inbox-items"] as const
@@ -68,6 +71,33 @@ export function useResolveConflict() {
       toast.success("Conflict resolved.")
       queryClient.invalidateQueries({ queryKey: inboxItemsQueryKey })
       queryClient.invalidateQueries({ queryKey: ["inbox-counts"] })
+    },
+  })
+}
+
+/** Prompt Studio's Activate, when the campaign has "requires approval to activate prompts" on. */
+export function useRequestPromptApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: requestPromptApproval,
+    onSuccess: () => {
+      toast.success("Sent for approval. It'll activate once approved from the Inbox.")
+      queryClient.invalidateQueries({ queryKey: inboxItemsQueryKey })
+      queryClient.invalidateQueries({ queryKey: ["inbox-counts"] })
+    },
+  })
+}
+
+export function useResolvePromptApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, resolution }: { id: string; resolution: PromptApprovalResolution }) =>
+      resolvePromptApprovalItem(id, resolution),
+    onSuccess: (_data, { resolution }) => {
+      toast.success(resolution === "approve" ? "Approved, the version is now active." : "Rejected.")
+      queryClient.invalidateQueries({ queryKey: inboxItemsQueryKey })
+      queryClient.invalidateQueries({ queryKey: ["inbox-counts"] })
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] })
     },
   })
 }

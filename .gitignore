@@ -1,0 +1,6 @@
+/docs
+
+#Frontend Ignore Rules
+/frontend/node_modules/
+/frontend/dist/
+/frontend/session.md

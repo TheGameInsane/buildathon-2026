@@ -25,3 +25,22 @@ export function timeAgo(timestamp: string | Date): string {
   }
   return "just now"
 }
+
+const compactNumberFormat = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 })
+
+/** "1.2k" instead of "1,284" — anywhere a large count needs to fit a fixed-width container without wrapping. */
+export function formatCompactNumber(value: number): string {
+  return compactNumberFormat.format(value)
+}
+
+/** "3h 20m left", "Overdue by 40m" — for an action-window countdown badge. */
+export function timeUntil(deadline: string | Date): { label: string; expired: boolean; minutesLeft: number } {
+  const date = typeof deadline === "string" ? new Date(deadline) : deadline
+  const minutesLeft = Math.round((date.getTime() - Date.now()) / 60_000)
+  const expired = minutesLeft <= 0
+  const minutes = Math.abs(minutesLeft)
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  const duration = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+  return { label: expired ? `Overdue by ${duration}` : `${duration} left`, expired, minutesLeft }
+}

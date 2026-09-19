@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { activatePrompt, fetchActivePromptSummary, fetchPromptVersions, saveDraftPrompt } from "@/api/prompts"
-import type { AgentName } from "@/types/domain"
+import type { AgentName, PromptVersion } from "@/types/domain"
 
 export function useActivePromptSummary(campaignId: string) {
   return useQuery({
@@ -28,6 +28,11 @@ export function useActivatePromptVersion(campaignId: string, agent: AgentName) {
     mutationFn: (version: number) => activatePrompt(campaignId, agent, version),
     onSuccess: (_data, version) => {
       toast.success(`v${version} is now active for ${agent}.`)
+      // Write the flipped `active` flag straight into the cache: the UI reflects it on this
+      // render, instead of waiting on a second round trip from invalidateQueries' refetch.
+      queryClient.setQueryData<PromptVersion[]>(versionsQueryKey(campaignId, agent), (current) =>
+        current?.map((v) => ({ ...v, active: v.version === version })),
+      )
       queryClient.invalidateQueries({ queryKey: versionsQueryKey(campaignId, agent) })
       queryClient.invalidateQueries({ queryKey: ["campaigns", campaignId, "prompts"] })
     },
@@ -38,9 +43,15 @@ export function useActivatePromptVersion(campaignId: string, agent: AgentName) {
 export function useSaveDraftPrompt(campaignId: string, agent: AgentName, author: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (content: string) => saveDraftPrompt(campaignId, agent, content, author),
+    mutationFn: ({ content, changelog }: { content: string; changelog: string }) =>
+      saveDraftPrompt(campaignId, agent, content, author, changelog),
     onSuccess: (draft) => {
       toast.success(`Saved as v${draft.version} (draft).`)
+      // Append the new version straight into the cache so it's visible immediately, not only
+      // once invalidateQueries' background refetch happens to land.
+      queryClient.setQueryData<PromptVersion[]>(versionsQueryKey(campaignId, agent), (current) =>
+        current ? [...current, draft] : [draft],
+      )
       queryClient.invalidateQueries({ queryKey: versionsQueryKey(campaignId, agent) })
     },
   })

@@ -6,19 +6,23 @@ import { AlertsStrip } from "@/components/shell/alerts-strip"
 import { CampaignCard, CampaignCardSkeleton } from "@/components/campaign-card"
 import { CampaignPauseResumeDialog } from "@/components/campaign-pause-resume-dialog"
 import { MetricCard } from "@/components/metric-card"
+import { OverviewTrendChart } from "@/components/overview-trend-chart"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useActivityFeed } from "@/hooks/use-activity-feed"
 import { useCampaigns, useToggleCampaignPause } from "@/hooks/use-campaigns"
 import { useInboxCounts } from "@/hooks/use-inbox-counts"
+import { useOverviewTouchesTrend } from "@/hooks/use-overview-trend"
 import { getCampaignFunnelSummary } from "@/lib/campaign-metrics"
 import type { Campaign } from "@/types/domain"
 
 const EMPTY_COUNTS = { approvals: 0, escalations: 0, conflicts: 0 }
 
-export function MissionControl() {
+export function Overview() {
   const { data: campaigns, isLoading: campaignsLoading, isError: campaignsErrored } = useCampaigns()
   const { data: events, isLoading: feedLoading } = useActivityFeed()
   const { data: inboxCounts = EMPTY_COUNTS } = useInboxCounts()
+  const { data: touchesTrend } = useOverviewTouchesTrend()
   const togglePause = useToggleCampaignPause()
 
   const [confirmTarget, setConfirmTarget] = useState<Campaign | null>(null)
@@ -45,7 +49,7 @@ export function MissionControl() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-text-primary">Mission Control</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Overview</h1>
         <Button asChild>
           <Link to="/campaigns/new">
             <Plus /> New Campaign
@@ -53,19 +57,32 @@ export function MissionControl() {
         </Button>
       </div>
 
-      {kpis && (
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <MetricCard variant="hero" icon={Zap} value={kpis.liveCampaigns} label="Live campaigns" />
-          <MetricCard variant="hero" icon={Target} value={kpis.discovered} label="Prospects discovered" />
-          <MetricCard variant="hero" icon={Calendar} value={kpis.meetings} label="Meetings booked" />
-          <MetricCard
-            variant="hero"
-            icon={TrendingUp}
-            value={kpis.conversionRate}
-            format="percent"
-            label="Overall conversion rate"
-          />
+      {kpis ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
+          <div className="grid grid-cols-2 gap-4">
+            <MetricCard variant="hero" icon={Zap} value={kpis.liveCampaigns} label="Live campaigns" />
+            <MetricCard variant="hero" icon={Target} value={kpis.discovered} label="Prospects discovered" />
+            <MetricCard variant="hero" icon={Calendar} value={kpis.meetings} label="Meetings booked" />
+            <MetricCard
+              variant="hero"
+              icon={TrendingUp}
+              value={kpis.conversionRate}
+              format="percent"
+              label="Overall conversion rate"
+            />
+          </div>
+          <div className="flex flex-col gap-1 rounded-[10px] border border-border bg-surface p-4">
+            <p className="text-sm font-semibold text-text-primary">Touches by channel, all campaigns</p>
+            <p className="text-xs text-text-secondary">Last 7 days</p>
+            {touchesTrend ? (
+              <OverviewTrendChart data={touchesTrend} className="mt-1" />
+            ) : (
+              <Skeleton className="mt-1 h-[200px] w-full" />
+            )}
+          </div>
         </div>
+      ) : (
+        <Skeleton className="h-40 w-full" />
       )}
 
       <AlertsStrip counts={inboxCounts} variant="full" />

@@ -129,5 +129,8 @@ export const motion = {
   toastAutoDismissMs: 4000,
 } as const
 
-/** Mission Control, Campaign Overview, and the Activity Feed poll on this interval. */
+/** Overview, Campaign Overview, and the Activity Feed poll on this interval. */
 export const pollIntervalMs = 5000
+
+/** The Overview page's touches-by-channel trend chart is a trend view, not a live counter: ~90 min, not 5s. */
+export const overviewTrendPollIntervalMs = 90 * 60 * 1000

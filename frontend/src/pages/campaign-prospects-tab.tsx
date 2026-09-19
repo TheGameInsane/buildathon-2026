@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
-import { Search } from "lucide-react"
+import { Fragment, useMemo, useState } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Search } from "lucide-react"
 import { cn } from "cn"
 import { ChannelIcon } from "@/components/channel-icon"
 import { Input } from "@/components/ui/input"
@@ -44,41 +44,6 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-function ProspectCard({ prospect, campaignId }: { prospect: KanbanProspect; campaignId: string }) {
-  return (
-    <Link
-      to={`/campaigns/${campaignId}/prospects/${prospect.id}`}
-      className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3 transition-shadow hover:border-brand-600/30 hover:shadow-[0_0_0_1px_rgba(46,125,255,0.1),0_8px_20px_-8px_rgba(46,125,255,0.3)]"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-semibold text-brand-600">
-            {initials(prospect.name)}
-          </span>
-          <div>
-            <p className="text-sm font-medium text-text-primary">{prospect.name}</p>
-            <p className="text-xs text-text-secondary">
-              {prospect.title}, {prospect.company}
-            </p>
-          </div>
-        </div>
-        {prospect.nextActionChannel && <ChannelIcon channel={prospect.nextActionChannel} />}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", fitBadgeClassName(prospect.fitScore))}>
-          Fit {prospect.fitScore}
-        </span>
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE_CLASS[prospect.status])}>
-          {PROSPECT_STATUS_LABEL[prospect.status]}
-        </span>
-      </div>
-      <span className="text-xs text-text-secondary">
-        {prospect.daysSinceLastTouch === 0 ? "Contacted today" : `Contacted ${prospect.daysSinceLastTouch}d ago`}
-      </span>
-    </Link>
-  )
-}
-
 type StatusFilter = "all" | ProspectStatus
 const STATUS_FILTERS: StatusFilter[] = [
   "all",
@@ -93,59 +58,62 @@ const STATUS_FILTERS: StatusFilter[] = [
   "paused",
 ]
 
-type SortKey =
-  | "recentlyDiscovered"
-  | "recentlyContacted"
-  | "mostEngaged"
-  | "leastEngaged"
-  | "mostRecentReply"
-  | "company"
-  | "jobTitle"
+type StageFilter = "all" | number
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "recentlyDiscovered", label: "Recently discovered" },
-  { value: "recentlyContacted", label: "Recently contacted" },
-  { value: "mostEngaged", label: "Most engaged" },
-  { value: "leastEngaged", label: "Least engaged" },
-  { value: "mostRecentReply", label: "Most recent reply" },
-  { value: "company", label: "Company" },
-  { value: "jobTitle", label: "Job title" },
+type ColumnKey = "name" | "company" | "stage" | "fitScore" | "lastTouch"
+
+interface Column {
+  key: ColumnKey
+  label: string
+  sortable: true
+}
+
+const COLUMNS: Column[] = [
+  { key: "name", label: "Name", sortable: true },
+  { key: "company", label: "Company", sortable: true },
+  { key: "stage", label: "Stage", sortable: true },
+  { key: "fitScore", label: "Fit score", sortable: true },
+  { key: "lastTouch", label: "Last touch", sortable: true },
 ]
 
-function sortProspects(list: KanbanProspect[], key: SortKey): KanbanProspect[] {
-  const copy = [...list]
+function columnValue(p: KanbanProspect, key: ColumnKey): string | number {
   switch (key) {
-    case "recentlyDiscovered":
-      return copy.sort((a, b) => new Date(b.discoveredAt).getTime() - new Date(a.discoveredAt).getTime())
-    case "recentlyContacted":
-      return copy.sort((a, b) => a.daysSinceLastTouch - b.daysSinceLastTouch)
-    case "mostEngaged":
-      return copy.sort((a, b) => b.engagementScore - a.engagementScore)
-    case "leastEngaged":
-      return copy.sort((a, b) => a.engagementScore - b.engagementScore)
-    case "mostRecentReply":
-      return copy.sort((a, b) => {
-        if (!a.lastRepliedAt && !b.lastRepliedAt) return 0
-        if (!a.lastRepliedAt) return 1
-        if (!b.lastRepliedAt) return -1
-        return new Date(b.lastRepliedAt).getTime() - new Date(a.lastRepliedAt).getTime()
-      })
+    case "name":
+      return p.name.toLowerCase()
     case "company":
-      return copy.sort((a, b) => a.company.localeCompare(b.company))
-    case "jobTitle":
-      return copy.sort((a, b) => a.title.localeCompare(b.title))
-    default:
-      return copy
+      return p.company.toLowerCase()
+    case "stage":
+      return p.stageIndex
+    case "fitScore":
+      return p.fitScore
+    case "lastTouch":
+      return p.daysSinceLastTouch
   }
+}
+
+function sortProspects(list: KanbanProspect[], key: ColumnKey, direction: "asc" | "desc"): KanbanProspect[] {
+  const sign = direction === "asc" ? 1 : -1
+  return [...list].sort((a, b) => {
+    const av = columnValue(a, key)
+    const bv = columnValue(b, key)
+    if (typeof av === "string" || typeof bv === "string") return sign * String(av).localeCompare(String(bv))
+    return sign * (av - bv)
+  })
 }
 
 export function CampaignProspectsTab() {
   const { campaign } = useCampaignContext()
   const { data: prospects, isLoading } = useProspects(campaign.id)
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [sortKey, setSortKey] = useState<SortKey>("recentlyDiscovered")
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all")
+  const [sort, setSort] = useState<{ key: ColumnKey; direction: "asc" | "desc" }>({
+    key: "lastTouch",
+    direction: "asc",
+  })
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const highlightedStage = searchParams.get("stage")
 
@@ -159,19 +127,20 @@ export function CampaignProspectsTab() {
     )
   }, [prospects, query])
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<StatusFilter, number> = { all: searched.length } as Record<StatusFilter, number>
-    for (const status of STATUS_FILTERS) {
-      if (status === "all") continue
-      counts[status] = searched.filter((p) => p.status === status).length
-    }
-    return counts
-  }, [searched])
-
   const filtered = useMemo(() => {
-    const byStatus = statusFilter === "all" ? searched : searched.filter((p) => p.status === statusFilter)
-    return sortProspects(byStatus, sortKey)
-  }, [searched, statusFilter, sortKey])
+    let list = searched
+    if (statusFilter !== "all") list = list.filter((p) => p.status === statusFilter)
+    if (stageFilter !== "all") list = list.filter((p) => p.stageIndex === stageFilter)
+    return sortProspects(list, sort.key, sort.direction)
+  }, [searched, statusFilter, stageFilter, sort])
+
+  const toggleSort = (key: ColumnKey) => {
+    setSort((current) =>
+      current.key === key
+        ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" },
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -185,68 +154,171 @@ export function CampaignProspectsTab() {
             className="pl-8"
           />
         </div>
-        <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-          <SelectTrigger className="w-52">
-            <SelectValue />
+
+        <Select value={stageFilter === "all" ? "all" : String(stageFilter)} onValueChange={(v) => setStageFilter(v === "all" ? "all" : Number(v))}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Stage" />
           </SelectTrigger>
           <SelectContent>
-            {SORT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                Sort: {o.label}
+            <SelectItem value="all">All stages</SelectItem>
+            {FUNNEL_STAGES.map((stage, i) => (
+              <SelectItem key={stage} value={String(i)}>
+                {stage}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {STATUS_FILTERS.map((status) => (
-          <button
-            key={status}
-            type="button"
-            onClick={() => setStatusFilter(status)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium",
-              statusFilter === status
-                ? "bg-brand-600 text-white"
-                : "bg-surface text-text-secondary hover:bg-canvas",
-            )}
-          >
-            {status === "all" ? "All" : PROSPECT_STATUS_LABEL[status]} ({statusCounts[status] ?? 0})
-          </button>
-        ))}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTERS.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status === "all" ? "All statuses" : PROSPECT_STATUS_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span className="ml-auto text-xs text-text-secondary">{filtered.length.toLocaleString()} prospects</span>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-[repeat(7,minmax(180px,1fr))] gap-3 overflow-x-auto">
-          {FUNNEL_STAGES.map((stage) => (
-            <Skeleton key={stage} className="h-48 w-full" />
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
+      ) : !filtered.length ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-border text-center">
+          <p className="text-sm text-text-secondary">No prospects match these filters.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-[repeat(7,minmax(180px,1fr))] gap-3 overflow-x-auto">
-          {FUNNEL_STAGES.map((stage, stageIndex) => {
-            const stageProspects = filtered.filter((p) => p.stageIndex === stageIndex)
-            return (
-              <div
-                key={stage}
-                className={cn(
-                  "flex flex-col gap-2 rounded-[10px] border border-border bg-canvas p-2",
-                  highlightedStage === String(stageIndex) && "ring-2 ring-brand-600",
-                )}
-              >
-                <p className="flex items-center justify-between px-1 text-xs font-semibold text-text-secondary">
-                  {stage}
-                  <span className="tabular-nums">{stageProspects.length}</span>
-                </p>
-                <div className="flex flex-col gap-2">
-                  {stageProspects.map((p) => (
-                    <ProspectCard key={p.id} prospect={p} campaignId={campaign.id} />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+        <div className="overflow-x-auto rounded-[10px] border border-border">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface text-xs text-text-secondary">
+                <th className="w-8 px-2 py-2" />
+                {COLUMNS.map((col) => (
+                  <th key={col.key} className="px-3 py-2 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col.key)}
+                      className="inline-flex items-center gap-1 hover:text-text-primary"
+                    >
+                      {col.label}
+                      {sort.key === col.key ? (
+                        sort.direction === "asc" ? (
+                          <ArrowUp className="size-3" />
+                        ) : (
+                          <ArrowDown className="size-3" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="size-3 opacity-40" />
+                      )}
+                    </button>
+                  </th>
+                ))}
+                <th className="px-3 py-2 font-medium">Next action</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-canvas">
+              {filtered.map((p) => {
+                const expanded = expandedId === p.id
+                return (
+                  <Fragment key={p.id}>
+                    <tr
+                      className={cn(
+                        "group cursor-pointer hover:bg-surface",
+                        highlightedStage === String(p.stageIndex) && "bg-brand-50/40",
+                      )}
+                      onClick={() => navigate(`/campaigns/${campaign.id}/prospects/${p.id}`)}
+                    >
+                      <td className="px-2 py-2">
+                        <button
+                          type="button"
+                          aria-label={expanded ? "Collapse row" : "Expand row"}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setExpandedId(expanded ? null : p.id)
+                          }}
+                          className="flex size-5 items-center justify-center rounded text-text-secondary hover:bg-canvas hover:text-text-primary"
+                        >
+                          <ChevronRight className={cn("size-3.5 transition-transform", expanded && "rotate-90")} />
+                        </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[10px] font-semibold text-brand-600">
+                            {initials(p.name)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-text-primary group-hover:text-brand-600">
+                              {p.name}
+                            </p>
+                            <p className="truncate text-xs text-text-secondary">{p.title}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-text-primary">{p.company}</td>
+                      <td className="px-3 py-2 text-text-secondary">{FUNNEL_STAGES[p.stageIndex]}</td>
+                      <td className="px-3 py-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", fitBadgeClassName(p.fitScore))}>
+                          {p.fitScore}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5 text-text-secondary">
+                          {p.nextActionChannel && <ChannelIcon channel={p.nextActionChannel} size="sm" />}
+                          {p.daysSinceLastTouch === 0 ? "Today" : `${p.daysSinceLastTouch}d ago`}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        {p.nextActionChannel ? (
+                          <ChannelIcon channel={p.nextActionChannel} size="sm" />
+                        ) : (
+                          <span className="text-text-secondary">None</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE_CLASS[p.status])}>
+                          {PROSPECT_STATUS_LABEL[p.status]}
+                        </span>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr className="bg-surface">
+                        <td />
+                        <td colSpan={COLUMNS.length + 2} className="px-3 py-3">
+                          <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-text-secondary">
+                            <span>Engagement score: <span className="font-medium text-text-primary">{p.engagementScore}</span></span>
+                            <span>Discovered: <span className="font-medium text-text-primary">{new Date(p.discoveredAt).toLocaleDateString()}</span></span>
+                            <span>
+                              Last reply:{" "}
+                              <span className="font-medium text-text-primary">
+                                {p.lastRepliedAt ? new Date(p.lastRepliedAt).toLocaleDateString() : "None yet"}
+                              </span>
+                            </span>
+                            <Link
+                              to={`/campaigns/${campaign.id}/prospects/${p.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="ml-auto inline-flex items-center gap-1 font-medium text-brand-600 hover:underline"
+                            >
+                              Open full profile <ChevronDown className="-rotate-90 size-3" />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

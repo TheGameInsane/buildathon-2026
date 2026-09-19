@@ -1,7 +1,32 @@
+import { renderTemplate } from "@/lib/liquid-template-engine"
 import { getProspectProfile } from "@/mocks/prospect-profiles"
-import type { Channel, TimelineEvent } from "@/types/domain"
+import type { Channel, PersonalizationTier, TimelineEvent } from "@/types/domain"
 
 const store = new Map<string, TimelineEvent[]>()
+
+/** Resolved server-side, before any LLM call — so a templated LinkedIn note still feels branch-aware. */
+const LINKEDIN_TEMPLATE_NOTE =
+  `Hi {{ prospect.firstName }}, following up on {{ prospect.company }}'s scaling plans. ` +
+  `{% if prospect.segment == "voice_ai_founder" %}Curious how you're thinking about latency for real-time voice.` +
+  `{% else %}Would love to trade notes on your infra roadmap.{% endif %}`
+
+/** Picks the tier for a prospect's first outbound touch. */
+function firstTouchPersonalization(
+  channel: Channel,
+  n: number,
+  firstName: string,
+  company: string,
+): { tier: PersonalizationTier; preview: string } {
+  if (channel === "linkedin") {
+    const segment = n % 2 === 0 ? "voice_ai_founder" : "other"
+    return {
+      tier: "template",
+      preview: renderTemplate(LINKEDIN_TEMPLATE_NOTE, { prospect: { firstName, company, segment } }),
+    }
+  }
+
+  return { tier: "ai", preview: `Following up on ${company}'s infra scaling plans…` }
+}
 
 function baseDetails(cost = 0.004): TimelineEvent["details"] {
   return {
@@ -35,16 +60,20 @@ function buildTimeline(campaignId: string, prospectId: string): TimelineEvent[] 
   })
   daysAgo -= 1
 
+  const firstTouchChannel = channels[n % channels.length]
+  const firstName = profile.name.split(" ")[0]
+  const firstTouch = firstTouchPersonalization(firstTouchChannel, n, firstName, profile.company)
   events.push({
     id: `${prospectId}-t2`,
-    channel: channels[n % channels.length],
+    channel: firstTouchChannel,
     kind: "sent",
-    preview: `Following up on ${profile.company}'s infra scaling plans…`,
+    preview: firstTouch.preview,
     reasonText: "Opened first email twice, no reply: trying a different angle before switching channels.",
     groundedOk: true,
     promptVersion: 3,
     timestamp: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
     details: baseDetails(),
+    personalizationTier: firstTouch.tier,
   })
   daysAgo -= 2
 
@@ -98,6 +127,7 @@ function buildTimeline(campaignId: string, prospectId: string): TimelineEvent[] 
       promptVersion: 3,
       timestamp: new Date(Date.now() - Math.max(daysAgo, 0) * 86_400_000).toISOString(),
       details: baseDetails(),
+      personalizationTier: "ai",
     })
   }
 

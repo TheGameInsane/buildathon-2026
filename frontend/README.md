@@ -1,75 +1,52 @@
-# React + TypeScript + Vite
+# Drona Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web console for the Autonomous SDR Platform — campaigns, inbox, prompt studio, and
+per-tenant settings for the multi-tenant SDR backend. See the repo root `CLAUDE.md`
+and `docs/` for the overall system and API contract.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + TypeScript, built with Vite
+- React Router for routing, TanStack Query for data fetching/caching
+- Tailwind CSS v4, Radix UI primitives, shadcn-style components (`src/components/ui`)
+- react-hook-form + zod for forms and validation
+- Recharts for charts
 
-## React Compiler
+## Getting started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev       # start the dev server (Vite)
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Other scripts:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run build      # type-check (tsc -b) then production build to dist/
+npm run preview    # preview the production build locally
+npm run lint        # eslint
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Project layout
 
 ```
+src/
+  api/          fetch wrappers per resource (campaigns, inbox, prospects, ...)
+  hooks/        TanStack Query hooks built on top of src/api
+  components/   shared UI components; components/ui holds shadcn-style primitives
+  pages/        route-level views (campaigns, inbox, prompt studio, settings, ...)
+  mocks/        mock data used by the API layer until backend endpoints are wired up
+  lib/          shared utilities (auth context, formatting, design tokens, etc.)
+  types/        shared TypeScript domain/wizard types
+  dev/          dev-only routes, e.g. /dev/components (component gallery)
+```
+
+Routing is defined in `src/App.tsx`. Authenticated routes are gated by `RequireAuth`,
+which redirects to `/login` when no user is signed in.
+
+## Notes
+
+- The `src/api` layer currently reads from `src/mocks`; swap these out for real HTTP
+  calls to the backend as endpoints land (see `docs/api_contract.md`).
+- No company-specific names, facts, or prices belong in this codebase — tenant identity
+  and content come from the backend at runtime.

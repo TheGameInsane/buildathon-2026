@@ -69,7 +69,7 @@ export function WizardStepChecklist({ campaign, values }: WizardStepChecklistPro
         }}
       />
       <p className="text-xs text-text-secondary">
-        {campaign.name} has been saved as a Draft. You can leave it here and finish later from Mission Control.
+        {campaign.name} has been saved as a Draft. You can leave it here and finish later from Overview.
       </p>
 
       <Dialog

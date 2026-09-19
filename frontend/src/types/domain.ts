@@ -27,11 +27,20 @@ export interface Campaign {
   funnelCounts: FunnelCounts["counts"]
   touchCount: number
   todayByChannel: Partial<Record<Channel, number>>
-  sparkline: number[]
   owner: string
   repCount: number
   lastActivityAt: string
   archived?: boolean
+  /** Set once a manager submits the post-completion feedback flow. */
+  completionFeedback?: CampaignCompletionFeedback
+}
+
+/** One day of the Overview trend chart: total touches sent that day, split by channel, across every campaign. */
+export interface DailyChannelTouches {
+  day: string
+  email: number
+  whatsapp: number
+  linkedin: number
 }
 
 export type AgentName =
@@ -89,7 +98,15 @@ export interface TimelineEvent {
   promptVersion: number
   timestamp: string
   details: TimelineEventDetails
+  /** Only set on "sent" events: which tier produced this touch. */
+  personalizationTier?: PersonalizationTier
 }
+
+/**
+ * "template" = merge-tag substitution only (LiquidTemplateEngine, no LLM call).
+ * "ai" = current Personalisation Agent behaviour (full LLM-generated draft).
+ */
+export type PersonalizationTier = "template" | "ai"
 
 export interface NextBestAction {
   channel: Channel
@@ -98,9 +115,12 @@ export interface NextBestAction {
   reasonText: string
   draftContent?: string
   requiresApproval: boolean
+  personalizationTier?: PersonalizationTier
+  /** LinkedIn actions are queued for a human (playing the rep) to execute by hand, not sent automatically. */
+  requiresManualExecution?: boolean
 }
 
-export type InboxItemKind = "approval" | "escalation" | "conflict"
+export type InboxItemKind = "approval" | "escalation" | "conflict" | "prompt_approval"
 
 export interface InboxItemBase {
   id: string
@@ -108,6 +128,9 @@ export interface InboxItemBase {
   prospectName: string
   company: string
   campaignName: string
+  /** Lets the Inbox card open the right Prospect 360, its whole surface is one click target. */
+  campaignId: string
+  prospectId: string
   timestamp: string
 }
 
@@ -130,7 +153,19 @@ export interface ConflictItem extends InboxItemBase {
   campaignB: { name: string; wants: string }
 }
 
-export type InboxItem = ApprovalItem | EscalationItem | ConflictItem
+/** Created when a campaign has "requires approval to activate prompts" on — waits in the Inbox until approved. */
+export interface PromptApprovalItem {
+  id: string
+  kind: "prompt_approval"
+  campaignId: string
+  campaignName: string
+  agentName: AgentName
+  version: number
+  requestedBy: string
+  timestamp: string
+}
+
+export type InboxItem = ApprovalItem | EscalationItem | ConflictItem | PromptApprovalItem
 
 export interface PromptVersion {
   version: number
@@ -139,6 +174,8 @@ export interface PromptVersion {
   timestamp: string
   active: boolean
   evalScore: number
+  /** Required on every save: what changed in this version, shown in the version list. */
+  changelog: string
 }
 
 export interface ActivityFeedEvent {
@@ -150,10 +187,19 @@ export interface ActivityFeedEvent {
   campaignName: string
   timestamp: string
   prospectId: string
+  /** Plain-English reason for this run, shown when the feed item is expanded. */
+  reasonText: string
+  promptVersion: number
+  /** null when this action wasn't a grounding-checkable content generation (e.g. "connection accepted"). */
+  groundedOk: boolean | null
 }
 
 export interface CampaignMetrics {
   funnelCounts: FunnelCounts["counts"]
+  /** Input goal: touches the system sent today, across all channels. */
+  touchesSentToday: number
+  /** Input goal: prospects the Research agent processed today. */
+  prospectsResearchedToday: number
   meetings: number
   meetingsDelta: number
   responseRate: number
@@ -204,6 +250,8 @@ export interface KanbanProspect {
   lastRepliedAt: string | null
   nextActionChannel?: Channel
   stageIndex: number
+  /** When the prospect entered its current stage — the clock an action window counts down from. */
+  stageEnteredAt: string
 }
 
 export type DocType =
@@ -261,10 +309,44 @@ export interface IntegrationRecord {
   lastCheckedAt: string
 }
 
+/** One connected mailbox's send health, shown in the Deliverability panel. Reuses the 5-value Status vocabulary. */
+export interface MailboxHealth {
+  id: string
+  email: string
+  sentToday: number
+  /** 0-100. */
+  bounceRate: number
+  health: Status
+  /** A stored counter that increments once per simulated day — no real warmup infrastructure. */
+  warmupProgressPct: number | null
+}
+
 export interface KillSwitchState {
   active: boolean
   activatedBy: string | null
   activatedAt: string | null
+}
+
+/** One row of the Playbooks table: a trigger the Outreach Strategy agent watches for, and the action it takes. */
+export interface PlaybookRule {
+  id: string
+  trigger: string
+  action: string
+}
+
+/** Structured JSON config the Outreach Strategy agent's prompt reads from — PlaybookCard renders/edits it as a table. */
+export interface Playbook {
+  campaignId: string
+  rules: PlaybookRule[]
+}
+
+/** Entry/exit criteria are simple field-comparison strings (e.g. "fit_score >= 70"), not evaluated expressions. */
+export interface StageConfig {
+  stage: FunnelStage
+  entryCriteria: string
+  exitCriteria: string
+  /** When set, a prospect entering this stage gets a countdown badge and escalates if it lapses unactioned. */
+  actionWindowHours?: number
 }
 
 export interface CampaignSettingsData {
@@ -285,6 +367,19 @@ export interface CampaignSettingsData {
   }
   reps: RepRef[]
   demoSpeedMultiplier: DemoSpeed
+  /** One entry per FUNNEL_STAGES index, manager-defined. */
+  stages: StageConfig[]
+  /**
+   * When on, activating a new prompt version doesn't apply immediately — it creates an
+   * Inbox approval item instead, and only takes effect once approved. Default off.
+   */
+  requiresApprovalToActivatePrompts: boolean
+}
+
+export interface CampaignCompletionFeedback {
+  text: string
+  submittedBy: string
+  submittedAt: string
 }
 
 export interface ProspectFact {

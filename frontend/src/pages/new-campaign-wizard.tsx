@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useCreateCampaignFromWizard } from "@/hooks/use-campaigns"
 import { useDefaultAgentPrompts } from "@/hooks/use-campaign-defaults"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { CURRENT_MANAGER_NAME } from "@/lib/current-user"
+import { useAuth } from "@/hooks/use-auth"
 import { WizardStepAudience } from "@/pages/wizard-step-audience"
 import { WizardStepCampaign } from "@/pages/wizard-step-campaign"
 import { WizardStepChecklist } from "@/pages/wizard-step-checklist"
@@ -34,6 +34,8 @@ const STEP_COMPONENTS = [
 
 function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string> }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const currentUserName = user?.name ?? ""
   const [step, setStep] = useState(0)
   const [createdCampaign, setCreatedCampaign] = useState<Campaign | null>(null)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
@@ -41,7 +43,7 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
 
   const form = useForm<WizardValues>({
     resolver: zodResolver(wizardSchema),
-    defaultValues: wizardDefaultValues(CURRENT_MANAGER_NAME, defaultPrompts as WizardValues["agentPrompts"]),
+    defaultValues: wizardDefaultValues(currentUserName, defaultPrompts as WizardValues["agentPrompts"]),
     mode: "onSubmit",
   })
   const { control, trigger, getValues } = form
@@ -60,12 +62,11 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
       funnelCounts: [0, 0, 0, 0, 0, 0, 0],
       touchCount: 0,
       todayByChannel: Object.fromEntries(channels.map((c) => [c, 0])),
-      sparkline: [0, 0, 0, 0, 0, 0, 0],
-      owner: debounced.owner || CURRENT_MANAGER_NAME,
+      owner: debounced.owner || currentUserName,
       repCount: (debounced.repIds ?? []).length,
       lastActivityAt: new Date().toISOString(),
     }
-  }, [debounced, createdCampaign])
+  }, [debounced, createdCampaign, currentUserName])
 
   const isChecklistStep = step === WIZARD_STEPS.length - 1
   const StepComponent = STEP_COMPONENTS[step]
@@ -168,7 +169,7 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
         open={cancelConfirmOpen}
         onOpenChange={setCancelConfirmOpen}
         title="Save as draft and exit?"
-        description="Your progress will be saved as a Draft campaign you can finish later from Mission Control."
+        description="Your progress will be saved as a Draft campaign you can finish later from Overview."
         confirmLabel="Save & exit"
         tone="amber"
         onConfirm={handleCancelConfirm}

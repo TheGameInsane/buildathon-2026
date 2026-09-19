@@ -16,6 +16,7 @@ function seedPromptsForCampaign(): Record<AgentName, PromptVersion[]> {
         timestamp: new Date(Date.now() - 3 * 86_400_000).toISOString(),
         active: true,
         evalScore: 78 + (i % 3) * 5,
+        changelog: "Scoped the base prompt to this agent's pipeline step.",
       },
       {
         version: 3,
@@ -24,6 +25,7 @@ function seedPromptsForCampaign(): Record<AgentName, PromptVersion[]> {
         timestamp: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
         active: false,
         evalScore: 88 + (i % 3) * 3,
+        changelog: "Added a guardrail against mentioning discounts too early.",
       },
     ]
   })
@@ -56,7 +58,13 @@ export function activatePromptVersion(campaignId: string, agent: AgentName, vers
 }
 
 /** Edit always creates a new draft version — never overwrites an existing one. */
-export function createDraftPromptVersion(campaignId: string, agent: AgentName, content: string, author: string): PromptVersion {
+export function createDraftPromptVersion(
+  campaignId: string,
+  agent: AgentName,
+  content: string,
+  author: string,
+  changelog: string,
+): PromptVersion {
   const versions = getStore(campaignId)[agent]
   const nextVersion = Math.max(...versions.map((v) => v.version)) + 1
   const draft: PromptVersion = {
@@ -66,6 +74,7 @@ export function createDraftPromptVersion(campaignId: string, agent: AgentName, c
     timestamp: new Date().toISOString(),
     active: false,
     evalScore: 0,
+    changelog,
   }
   versions.push(draft)
   return draft
@@ -83,6 +92,7 @@ export function seedPromptsFromWizard(campaignId: string, owner: string, agentPr
         timestamp: new Date().toISOString(),
         active: true,
         evalScore: 0,
+        changelog: "Initial prompt from the campaign wizard.",
       },
     ]
   })

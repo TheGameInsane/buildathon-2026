@@ -1,20 +1,13 @@
 import { useState } from "react"
-import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom"
-import { Copy, MoreVertical, Pause, Play } from "lucide-react"
+import { NavLink, Outlet, useParams } from "react-router-dom"
+import { Pause, Play } from "lucide-react"
 import { cn } from "cn"
 import { Breadcrumbs } from "@/components/shell/breadcrumbs"
 import { CampaignPauseResumeDialog } from "@/components/campaign-pause-resume-dialog"
-import { ConfirmDialog } from "@/components/confirm-dialog"
 import { StatusPill } from "@/components/status-pill"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useCampaign, useCampaignLifecycle, useToggleCampaignPause } from "@/hooks/use-campaigns"
+import { useCampaign, useToggleCampaignPause } from "@/hooks/use-campaigns"
 import { PagePlaceholder } from "@/pages/page-placeholder"
 import type { CampaignContext } from "@/pages/use-campaign-context"
 
@@ -24,20 +17,16 @@ const TABS = [
   { to: "agents", label: "Agents" },
   { to: "prompts", label: "Prompts" },
   { to: "knowledge", label: "Knowledge" },
+  { to: "deliverability", label: "Deliverability" },
   { to: "settings", label: "Settings" },
 ] as const
 
-type LifecycleConfirm = { kind: "complete" | "archive" } | null
-
 export function CampaignDetail() {
   const { campaignId } = useParams<{ campaignId: string }>()
-  const navigate = useNavigate()
   const { data: campaign, isLoading } = useCampaign(campaignId)
   const togglePause = useToggleCampaignPause()
-  const lifecycle = useCampaignLifecycle()
 
   const [pauseConfirm, setPauseConfirm] = useState(false)
-  const [lifecycleConfirm, setLifecycleConfirm] = useState<LifecycleConfirm>(null)
 
   if (isLoading) {
     return (
@@ -63,39 +52,20 @@ export function CampaignDetail() {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold text-text-primary">{campaign.name}</h1>
           <StatusPill status={campaign.status} pulse />
-          <div className="ml-auto flex items-center gap-2">
-            {canPause && (
-              <Button type="button" variant="outline" size="sm" onClick={() => setPauseConfirm(true)}>
-                {campaign.status === "live" ? (
-                  <>
-                    <Pause /> Pause
-                  </>
-                ) : (
-                  <>
-                    <Play /> Resume
-                  </>
-                )}
-              </Button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon-sm" aria-label="More campaign actions">
-                  <MoreVertical />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => lifecycle.duplicate.mutate(campaign.id)}>
-                  <Copy /> Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLifecycleConfirm({ kind: "complete" })}>
-                  Mark as completed
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onClick={() => setLifecycleConfirm({ kind: "archive" })}>
-                  Archive
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {/* Duplicate/Complete/Archive/Delete live in Settings > Danger zone — visible there, not behind a menu here. */}
+          {canPause && (
+            <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={() => setPauseConfirm(true)}>
+              {campaign.status === "live" ? (
+                <>
+                  <Pause /> Pause
+                </>
+              ) : (
+                <>
+                  <Play /> Resume
+                </>
+              )}
+            </Button>
+          )}
         </div>
         <p className="text-sm text-text-secondary">
           {campaign.icp} · Owner: {campaign.owner} · {campaign.repCount} rep{campaign.repCount === 1 ? "" : "s"}
@@ -128,27 +98,6 @@ export function CampaignDetail() {
         open={pauseConfirm}
         onOpenChange={setPauseConfirm}
         onConfirm={() => togglePause.mutate(campaign)}
-      />
-
-      <ConfirmDialog
-        open={lifecycleConfirm !== null}
-        onOpenChange={(open) => !open && setLifecycleConfirm(null)}
-        title={lifecycleConfirm?.kind === "archive" ? `Archive ${campaign.name}?` : `Mark ${campaign.name} as completed?`}
-        description={
-          lifecycleConfirm?.kind === "archive"
-            ? "This removes it from Mission Control. It can still be found from Compare and reporting."
-            : "This stops active outreach and moves the campaign to Completed."
-        }
-        confirmLabel={lifecycleConfirm?.kind === "archive" ? "Archive" : "Mark completed"}
-        tone={lifecycleConfirm?.kind === "archive" ? "red" : "green"}
-        onConfirm={() => {
-          if (lifecycleConfirm?.kind === "archive") {
-            lifecycle.archive.mutate(campaign.id)
-            navigate("/")
-          } else if (lifecycleConfirm?.kind === "complete") {
-            lifecycle.complete.mutate(campaign.id)
-          }
-        }}
       />
     </div>
   )

@@ -5,14 +5,14 @@ import type { InboxCounts } from "@/mocks/inbox-counts"
 
 export interface AlertsStripProps {
   counts: InboxCounts
-  /** "compact" for the top bar (every screen), "full" for the Mission Control zone. */
+  /** "compact" for the top bar (every screen), "full" for the Overview zone. */
   variant?: "compact" | "full"
   className?: string
 }
 
 const items = [
   { key: "approvals" as const, label: "approval", icon: ShieldAlert, color: "text-status-paused", filter: "approvals" },
-  { key: "conflicts" as const, label: "conflict", icon: GitMerge, color: "text-purple-600", filter: "conflicts" },
+  { key: "conflicts" as const, label: "conflict", icon: GitMerge, color: "text-slate-500", filter: "conflicts" },
   { key: "escalations" as const, label: "escalation", icon: AlertTriangle, color: "text-status-attention", filter: "escalations" },
 ]
 

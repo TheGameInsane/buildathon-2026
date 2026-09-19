@@ -60,7 +60,14 @@ export type WizardValues = z.infer<typeof wizardSchema>
 export const STEP_FIELDS: (keyof WizardValues)[][] = [
   ["name", "description", "owner"],
   ["industry", "geography", "targetRoles", "companySizeRange", "exclusionCriteria", "sampleCompanies"],
-  ["channels", "dailyCaps", "workingHours", "timezone", "requiresApprovalOnFirstTouch", "escalateOnPricingOrLegal"],
+  [
+    "channels",
+    "dailyCaps",
+    "workingHours",
+    "timezone",
+    "requiresApprovalOnFirstTouch",
+    "escalateOnPricingOrLegal",
+  ],
   ["tones"],
   ["sequenceSteps"],
   ["repIds"],

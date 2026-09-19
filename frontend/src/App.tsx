@@ -1,9 +1,11 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/shell/app-shell";
 import { ComponentsDemo } from "@/dev/components-demo";
+import { useAuth } from "@/hooks/use-auth";
 import { motion } from "@/lib/tokens";
 import { CampaignAgentsTab } from "@/pages/campaign-agents-tab";
+import { CampaignDeliverabilityTab } from "@/pages/campaign-deliverability-tab";
 import { CampaignDetail } from "@/pages/campaign-detail";
 import { CampaignKnowledgeTab } from "@/pages/campaign-knowledge-tab";
 import { CampaignOverviewTab } from "@/pages/campaign-overview-tab";
@@ -13,20 +15,33 @@ import { CampaignSettingsTab } from "@/pages/campaign-settings-tab";
 import { CampaignsList } from "@/pages/campaigns-list";
 import { Compare } from "@/pages/compare";
 import { Inbox } from "@/pages/inbox";
-import { MissionControl } from "@/pages/mission-control";
+import { Login } from "@/pages/login";
 import { NewCampaignWizard } from "@/pages/new-campaign-wizard";
+import { Overview } from "@/pages/overview";
 import { PromptStudio } from "@/pages/prompt-studio";
 import { Prospect360 } from "@/pages/prospect-360";
 import { Settings } from "@/pages/settings";
+
+/** Redirects to /login when no one is signed in, keeping the intended destination to return to. */
+function RequireAuth() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return <AppShell />;
+}
 
 function App() {
   return (
     <>
       <Routes>
         <Route path="/dev/components" element={<ComponentsDemo />} />
+        <Route path="/login" element={<Login />} />
 
-        <Route element={<AppShell />}>
-          <Route index element={<MissionControl />} />
+        <Route element={<RequireAuth />}>
+          <Route index element={<Overview />} />
           <Route path="campaigns" element={<CampaignsList />} />
           <Route path="campaigns/new" element={<NewCampaignWizard />} />
           <Route path="campaigns/:campaignId" element={<CampaignDetail />}>
@@ -36,6 +51,7 @@ function App() {
             <Route path="agents" element={<CampaignAgentsTab />} />
             <Route path="prompts" element={<CampaignPromptsTab />} />
             <Route path="knowledge" element={<CampaignKnowledgeTab />} />
+            <Route path="deliverability" element={<CampaignDeliverabilityTab />} />
             <Route path="settings" element={<CampaignSettingsTab />} />
           </Route>
           <Route

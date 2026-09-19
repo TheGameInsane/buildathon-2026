@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { cn } from "cn"
-import { ApprovalCard, ConflictCard, EscalationCard } from "@/components/inbox-card"
+import { ApprovalCard, ConflictCard, EscalationCard, PromptApprovalCard } from "@/components/inbox-card"
 import {
   Select,
   SelectContent,
@@ -11,7 +11,13 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCampaigns } from "@/hooks/use-campaigns"
-import { useInboxItems, useResolveApproval, useResolveConflict, useResolveEscalation } from "@/hooks/use-inbox"
+import {
+  useInboxItems,
+  useResolveApproval,
+  useResolveConflict,
+  useResolveEscalation,
+  useResolvePromptApproval,
+} from "@/hooks/use-inbox"
 import type { InboxItemKind } from "@/types/domain"
 
 type FilterTab = "all" | InboxItemKind
@@ -38,6 +44,7 @@ export function Inbox() {
   const resolveApproval = useResolveApproval()
   const resolveEscalation = useResolveEscalation()
   const resolveConflict = useResolveConflict()
+  const resolvePromptApproval = useResolvePromptApproval()
 
   const campaignScoped = useMemo(() => {
     if (!items) return []
@@ -48,14 +55,18 @@ export function Inbox() {
   const counts = useMemo(
     () => ({
       all: campaignScoped.length,
-      approval: campaignScoped.filter((i) => i.kind === "approval").length,
+      approval: campaignScoped.filter((i) => i.kind === "approval" || i.kind === "prompt_approval").length,
       escalation: campaignScoped.filter((i) => i.kind === "escalation").length,
       conflict: campaignScoped.filter((i) => i.kind === "conflict").length,
+      prompt_approval: campaignScoped.filter((i) => i.kind === "prompt_approval").length,
     }),
     [campaignScoped],
   )
 
-  const visible = tab === "all" ? campaignScoped : campaignScoped.filter((i) => i.kind === tab)
+  const visible =
+    tab === "all"
+      ? campaignScoped
+      : campaignScoped.filter((i) => i.kind === tab || (tab === "approval" && i.kind === "prompt_approval"))
 
   const withFade = (id: string, resolve: () => void) => {
     setResolvingIds((prev) => new Set(prev).add(id))
@@ -144,6 +155,17 @@ export function Inbox() {
                   onKeepDefault={() => withFade(item.id, () => resolveConflict.mutate(item.id))}
                   onOverride={() => withFade(item.id, () => resolveConflict.mutate(item.id))}
                   onSlowCadence={() => withFade(item.id, () => resolveConflict.mutate(item.id))}
+                />
+              )}
+              {item.kind === "prompt_approval" && (
+                <PromptApprovalCard
+                  item={item}
+                  onApprove={() =>
+                    withFade(item.id, () => resolvePromptApproval.mutate({ id: item.id, resolution: "approve" }))
+                  }
+                  onReject={() =>
+                    withFade(item.id, () => resolvePromptApproval.mutate({ id: item.id, resolution: "reject" }))
+                  }
                 />
               )}
             </div>
