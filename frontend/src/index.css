@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+
+@theme inline {
+    --font-sans: 'Inter Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: var(--font-sans);
+    --font-mono: ui-monospace, Consolas, monospace;
+
+    /* Design System > Colour tokens */
+    --color-brand-600: var(--brand-600);
+    --color-brand-50: var(--brand-50);
+    --color-accent-cyan: var(--accent-cyan);
+    --color-accent-lime: var(--accent-lime);
+    --color-status-live: var(--status-live);
+    --color-status-paused: var(--status-paused);
+    --color-status-draft: var(--status-draft);
+    --color-status-completed: var(--status-completed);
+    --color-status-attention: var(--status-attention);
+    --color-surface: var(--surface);
+    --color-surface-raised: var(--surface-raised);
+    --color-canvas: var(--canvas);
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+
+    /* shadcn/ui semantic aliases, mapped onto the tokens above */
+    --color-background: var(--canvas);
+    --color-foreground: var(--text-primary);
+    --color-card: var(--surface);
+    --color-card-foreground: var(--text-primary);
+    --color-popover: var(--surface-raised);
+    --color-popover-foreground: var(--text-primary);
+    --color-primary: var(--brand-600);
+    --color-primary-foreground: #ffffff;
+    --color-secondary: var(--brand-50);
+    --color-secondary-foreground: var(--brand-600);
+    --color-muted: var(--surface);
+    --color-muted-foreground: var(--text-secondary);
+    --color-accent: var(--brand-50);
+    --color-accent-foreground: var(--text-primary);
+    --color-destructive: var(--status-attention);
+    --color-border: var(--border);
+    --color-input: var(--border);
+    --color-ring: var(--brand-600);
+
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    color-scheme: dark;
+
+    /* Design System > Colour tokens (source of truth, see src/lib/tokens.ts) */
+    --brand-600: #2e7dff;
+    --brand-50: #142248;
+    --accent-cyan: #22d3ee;
+    --accent-lime: #a3e635;
+    --status-live: #22c55e;
+    --status-paused: #f59e0b;
+    --status-draft: #6b7a99;
+    --status-completed: #6366f1;
+    --status-attention: #ef4444;
+    --surface: #10162a;
+    --surface-raised: #161d35;
+    --canvas: #0a0e1a;
+    --border: #232b45;
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+
+    /* Card radius 10px; radius-md (8px) drives buttons/inputs, radius-full drives pills */
+    --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    background-image: radial-gradient(ellipse 1200px 600px at 20% -10%, color-mix(in oklab, var(--brand-600) 16%, transparent), transparent);
+    background-attachment: fixed;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+/* Live activity feed: new items slide down + fade in (Design System > Motion). */
+@keyframes activity-feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Subtle glow used behind hero metrics and premium CTAs. */
+.glow-brand {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--brand-600) 30%, transparent), 0 8px 32px -8px color-mix(in oklab, var(--brand-600) 45%, transparent);
+}
+.glow-lime {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-lime) 25%, transparent), 0 8px 32px -12px color-mix(in oklab, var(--accent-lime) 40%, transparent);
+}
