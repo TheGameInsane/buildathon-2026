@@ -1,0 +1,21 @@
+# Backend dependencies. pyproject.toml is the source of truth (its [project]
+# dependencies use loose lower bounds); this file pins the exact versions this
+# codebase is tested against, for `pip install -r requirements.txt` deployment flows
+# that don't resolve pyproject.toml directly.
+
+# Runtime
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic[email]==2.13.5
+psycopg[binary]==3.3.6
+cryptography==50.0.1
+openai==3.16.2
+python-multipart==0.0.32
+pypdf==6.19.0
+python-docx==1.2.0
+
+# Dev/test (pyproject.toml's [project.optional-dependencies] "dev" group) — needed to
+# run `pytest` and `ruff check .`, not to run the API itself.
+ruff==0.16.8
+pytest==9.1.1
+httpx==0.28.1

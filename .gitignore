@@ -1,5 +1,6 @@
 /docs
 /CLAUDE.md
+/backend.md
 
 #Frontend Ignore Rules
 /frontend/node_modules/
