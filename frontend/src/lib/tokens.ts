@@ -24,17 +24,20 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
-import { LinkedinIcon } from "@/components/icons/linkedin"
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>
 
 export type Status = "live" | "paused" | "draft" | "completed" | "attention"
-/** Email, WhatsApp, LinkedIn only. Voice is not a supported channel. */
-export type Channel = "email" | "whatsapp" | "linkedin"
+/** Email and WhatsApp only. Voice is not a supported channel. */
+export type Channel = "email" | "whatsapp"
 
 export const colors = {
   brand600: "#2E7DFF",
   brand50: "#142248",
+  /** Nuncia's single brand accent: used sparingly (wordmark, focus rings, the active
+   * nav indicator, a subtle primary-button hover tint). Never a status colour, never
+   * applied broadly across buttons/backgrounds/large surfaces. */
+  brandAccent: "#6043D3",
   accentCyan: "#22D3EE",
   accentLime: "#A3E635",
   statusLive: "#22C55E",
@@ -42,6 +45,8 @@ export const colors = {
   statusDraft: "#6B7A99",
   statusCompleted: "#6366F1",
   statusAttention: "#EF4444",
+  /** Muted violet — the Conflict card's accent only, never a status colour. */
+  conflictAccent: "#8A7CA8",
   surface: "#10162A",
   surfaceRaised: "#161D35",
   canvas: "#0A0E1A",
@@ -50,7 +55,8 @@ export const colors = {
   textSecondary: "#94A3B8",
 } as const
 
-/** The 5 status colours are the entire vocabulary of the product: never a 6th. */
+/** The 5 status colours are the entire vocabulary of status: never a 6th. brandAccent
+ * and conflictAccent exist too, but neither one ever represents a status. */
 export const statusMeta: Record<
   Status,
   { color: string; icon: LucideIcon; pulse: boolean; label: string }
@@ -66,7 +72,6 @@ export const statusMeta: Record<
 export const channelIcons: Record<Channel, IconComponent> = {
   email: Mail,
   whatsapp: MessageCircle,
-  linkedin: LinkedinIcon,
 }
 
 /**
@@ -76,8 +81,15 @@ export const channelIcons: Record<Channel, IconComponent> = {
 export const channelChartColors: Record<Channel, string> = {
   email: "#2A78D6",
   whatsapp: "#EB6834",
-  linkedin: "#EDA100",
 }
+
+/**
+ * Categorical palette for comparing campaigns (Compare screen charts) — continues the
+ * dataviz skill's validated default palette from slot 3 onward. Slots 1-2 (blue,
+ * orange) stay reserved for `channelChartColors`' email/whatsapp meaning, so a hue
+ * never stands for two different entities on the same screen.
+ */
+export const campaignChartColors = ["#1BAF7A", "#EDA100", "#E87BA4", "#008300", "#4A3AA7", "#E34948"]
 
 export const icons = {
   grounded: ShieldCheck,
@@ -132,5 +144,10 @@ export const motion = {
 /** Overview, Campaign Overview, and the Activity Feed poll on this interval. */
 export const pollIntervalMs = 5000
 
-/** The Overview page's touches-by-channel trend chart is a trend view, not a live counter: ~90 min, not 5s. */
-export const overviewTrendPollIntervalMs = 90 * 60 * 1000
+/**
+ * The Overview page's touches-by-channel trend chart (and every other auto-updating
+ * graph) refreshes on real-world minutes, not the compressed demo clock — the product
+ * runs on compressed simulated days, so an hour-scale refresh would never fire during
+ * a demo. Counters, statuses, and the activity feed keep their own 5s `pollIntervalMs`.
+ */
+export const graphRefreshIntervalMs = 60 * 1000

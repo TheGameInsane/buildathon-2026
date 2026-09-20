@@ -1,8 +1,4 @@
 import { activatePromptVersion } from "@/mocks/prompts"
-import { getCampaignSettings } from "@/mocks/campaign-settings"
-import { listCampaigns } from "@/mocks/campaigns"
-import { listProspects } from "@/mocks/prospects"
-import { FUNNEL_STAGES } from "@/types/domain"
 import type { AgentName, ApprovalItem, ConflictItem, EscalationItem, InboxItem, PromptApprovalItem } from "@/types/domain"
 
 let store: InboxItem[] = [
@@ -41,7 +37,7 @@ let store: InboxItem[] = [
     campaignId: "ai-founders-outreach",
     prospectId: "ai-founders-outreach-p7",
     timestamp: new Date(Date.now() - 3 * 3_600_000).toISOString(),
-    channel: "linkedin",
+    channel: "email",
     draftText: "Happy to share our SOC 2 report and walk your security team through our data handling.",
     flaggedReason: "Mentions security/compliance, needs approval",
   },
@@ -81,40 +77,7 @@ let store: InboxItem[] = [
   },
 ]
 
-/** Escalations already dismissed once shouldn't reappear just because the window is still expired. */
-const dismissedActionWindowEscalations = new Set<string>()
-
-/** Fires an Inbox escalation for any prospect whose stage action window lapsed with no action taken. */
-function syncActionWindowEscalations(): void {
-  for (const campaign of listCampaigns()) {
-    const settings = getCampaignSettings(campaign.id)
-    for (const prospect of listProspects(campaign.id)) {
-      const stageConfig = settings.stages[prospect.stageIndex]
-      if (!stageConfig?.actionWindowHours) continue
-
-      const deadline = new Date(prospect.stageEnteredAt).getTime() + stageConfig.actionWindowHours * 3_600_000
-      if (Date.now() < deadline) continue
-
-      const id = `esc-aw-${campaign.id}-${prospect.id}`
-      if (dismissedActionWindowEscalations.has(id) || store.some((item) => item.id === id)) continue
-
-      store.push({
-        id,
-        kind: "escalation",
-        prospectName: prospect.name,
-        company: prospect.company,
-        campaignName: campaign.name,
-        campaignId: campaign.id,
-        prospectId: prospect.id,
-        timestamp: new Date(deadline).toISOString(),
-        reasonText: `Action window for "${FUNNEL_STAGES[prospect.stageIndex]}" (${stageConfig.actionWindowHours}h) expired with no action taken.`,
-      })
-    }
-  }
-}
-
 export function listInboxItems(): InboxItem[] {
-  syncActionWindowEscalations()
   return store
 }
 
@@ -123,7 +86,6 @@ export function resolveApproval(id: string): void {
 }
 
 export function resolveEscalation(id: string): void {
-  if (id.startsWith("esc-aw-")) dismissedActionWindowEscalations.add(id)
   store = store.filter((item) => item.id !== id)
 }
 

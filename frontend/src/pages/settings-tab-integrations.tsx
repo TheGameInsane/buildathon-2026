@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react"
 import { cn } from "cn"
+import { ConnectIntegrationDialog } from "@/components/connect-integration-dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useIntegrations, useTestIntegration } from "@/hooks/use-integrations"
@@ -35,20 +36,25 @@ export function SettingsTabIntegrations() {
               <div>
                 <p className="text-sm font-medium text-text-primary">{integration.name}</p>
                 <p className="text-xs text-text-secondary">
-                  {integration.provider} · Last checked {timeAgo(integration.lastCheckedAt)}
+                  {integration.provider} · {integration.mode}
+                  {" · "}
+                  {integration.lastCheckedAt ? `Last checked ${timeAgo(integration.lastCheckedAt)}` : "Not checked yet"}
                 </p>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={testingThis}
-              onClick={() => testConnection.mutate(integration.id)}
-            >
-              {testingThis && <Loader2 className="animate-spin" />}
-              Test connection
-            </Button>
+            <div className="flex items-center gap-2">
+              <ConnectIntegrationDialog integration={integration} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={testingThis || !integration.configured}
+                onClick={() => testConnection.mutate(integration.id)}
+              >
+                {testingThis && <Loader2 className="animate-spin" />}
+                Test connection
+              </Button>
+            </div>
           </div>
         )
       })}

@@ -1,19 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { AuthContext, type AuthContextValue, type AuthUser } from "@/lib/auth-context"
-
-/** Hardcoded seed users for the demo. No real auth infrastructure. */
-const SEED_USERS: Record<string, { password: string; user: AuthUser }> = {
-  "manager@demo.sdr": {
-    password: "manager123",
-    user: { email: "manager@demo.sdr", name: "Priya Sharma", role: "manager" },
-  },
-  "rep@demo.sdr": {
-    password: "rep123",
-    user: { email: "rep@demo.sdr", name: "Dev Patel", role: "rep" },
-  },
-}
-
-const STORAGE_KEY = "auth-user"
+import { loginTenant, registerTenant, type AuthResult as ApiAuthResult } from "@/api/auth"
+import { AUTH_STORAGE_KEY as STORAGE_KEY, ApiError } from "@/lib/api-client"
+import { AuthContext, type AuthContextValue, type AuthResult, type AuthUser } from "@/lib/auth-context"
 
 function readStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null
@@ -25,24 +13,65 @@ function readStoredUser(): AuthUser | null {
   }
 }
 
+function toAuthUser(result: ApiAuthResult): AuthUser {
+  return {
+    orgId: result.org_id,
+    apiKey: result.api_key,
+    email: result.member.email,
+    name: result.member.name,
+    role: result.member.role as AuthUser["role"],
+  }
+}
+
+/** A network failure gets a generic message; a real API error (wrong password, taken
+ * email, ...) shows the backend's own reason. */
+function errorMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  return "Could not reach the server. Please try again."
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readStoredUser)
+  const [pending, setPending] = useState(false)
 
   useEffect(() => {
     if (user) window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user))
     else window.sessionStorage.removeItem(STORAGE_KEY)
   }, [user])
 
-  const login: AuthContextValue["login"] = (email, password) => {
-    const match = SEED_USERS[email.trim().toLowerCase()]
-    if (!match || match.password !== password) {
-      return { ok: false, error: "Incorrect email or password." }
+  const login: AuthContextValue["login"] = async (email, password) => {
+    setPending(true)
+    try {
+      const result = await loginTenant({ email, password })
+      setUser(toAuthUser(result))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: errorMessage(err) }
+    } finally {
+      setPending(false)
     }
-    setUser(match.user)
-    return { ok: true }
+  }
+
+  const register: AuthContextValue["register"] = async (input) => {
+    setPending(true)
+    try {
+      const result = await registerTenant(input)
+      setUser(toAuthUser(result))
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: errorMessage(err) }
+    } finally {
+      setPending(false)
+    }
   }
 
   const logout = () => setUser(null)
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, pending, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
+
+export type { AuthResult }

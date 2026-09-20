@@ -26,7 +26,7 @@ import type {
 } from "@/types/domain"
 
 const statuses: Status[] = ["live", "paused", "draft", "completed", "attention"]
-const channels: Channel[] = ["email", "whatsapp", "linkedin"]
+const channels: Channel[] = ["email", "whatsapp"]
 
 const campaign: Campaign = {
   id: "c1",
@@ -35,7 +35,7 @@ const campaign: Campaign = {
   status: "live",
   funnelCounts: [1284, 1180, 640, 426, 198, 18, 6],
   touchCount: 426,
-  todayByChannel: { email: 8, whatsapp: 3, linkedin: 1 },
+  todayByChannel: { email: 8, whatsapp: 3 },
   owner: "Priya",
   repCount: 3,
   lastActivityAt: new Date(Date.now() - 60_000).toISOString(),
@@ -151,7 +151,7 @@ export function ComponentsDemo() {
         {channels.map((c) => (
           <ChannelBadge key={c} channel={c} />
         ))}
-        <ChannelBadge channel="linkedin" muted />
+        <ChannelBadge channel="whatsapp" muted />
       </Section>
 
       <Section title="CampaignCard">
@@ -218,10 +218,10 @@ export function ComponentsDemo() {
         <NextBestActionCard
           className="w-80"
           action={{
-            channel: "linkedin",
+            channel: "whatsapp",
             when: "tomorrow 10am IST",
-            intent: "LinkedIn follow-up message",
-            reasonText: "Accepted the connection request yesterday",
+            intent: "Follow-up message",
+            reasonText: "Replied \"sounds good\" yesterday",
             requiresApproval: true,
           }}
         />
@@ -267,8 +267,7 @@ export function ComponentsDemo() {
             { label: "Prompts active for all enabled agents", passed: true },
             { label: "Knowledge base has 6 documents (min. 5)", passed: true },
             { label: "Rep assigned", passed: true },
-            { label: "Channels connected: Email, WhatsApp", passed: true },
-            { label: "Sample message previewed", passed: false, actionLabel: "Preview now" },
+            { label: "Channels connected: Email, WhatsApp", passed: false, actionLabel: "Connect a channel" },
           ]}
         />
       </Section>

@@ -11,10 +11,6 @@ function verdictForScore(score: number): { status: FitVerdictStatus; reason: str
   return { status: "no_fit", reason: "Outside target industry and company size range." }
 }
 
-function slugify(name: string) {
-  return name.toLowerCase().replace(/[^a-z\s]/g, "").trim().replace(/\s+/g, "-")
-}
-
 const store = new Map<string, ProspectProfile>()
 
 function buildProfile(campaignId: string, prospectId: string): ProspectProfile | undefined {
@@ -34,7 +30,6 @@ function buildProfile(campaignId: string, prospectId: string): ProspectProfile |
   const domain = `${kanban.company.toLowerCase().replace(/\s+/g, "")}.com`
 
   const channelsUsed: Channel[] = ["email"]
-  if (kanban.stageIndex >= 1) channelsUsed.push("linkedin")
   if (kanban.stageIndex >= 2) channelsUsed.push("whatsapp")
 
   return {
@@ -47,7 +42,7 @@ function buildProfile(campaignId: string, prospectId: string): ProspectProfile |
       email: `${firstName}.${lastName}@${domain}`,
       phone: n % 2 === 0 ? `+1 555 0${100 + (n % 900)}` : undefined,
       whatsapp: n % 3 === 0 ? `+1 555 0${100 + (n % 900)}` : undefined,
-      linkedinUrl: `https://www.linkedin.com/in/${slugify(kanban.name)}`,
+      linkedinUrl: kanban.linkedinUrl,
       location: LOCATIONS[n % LOCATIONS.length],
     },
     outreach: {

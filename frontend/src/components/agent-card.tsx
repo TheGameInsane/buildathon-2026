@@ -40,7 +40,8 @@ export function AgentCard({ agent, campaignId, onTogglePause, className }: Agent
       </div>
 
       <p className="text-xs text-text-secondary">
-        Last run: {timeAgo(agent.lastRunAt)} · v{agent.activeVersion} active
+        Last run: {agent.lastRunAt ? timeAgo(agent.lastRunAt) : "never"} · v{agent.activeVersion}
+        {agent.activeVersion === 0 ? " (default)" : " active"}
       </p>
       <p className="text-xs text-text-secondary">
         {agent.runsToday} runs today · {agent.succeeded} succeeded · {agent.failed} failed

@@ -7,10 +7,9 @@ export interface OverviewTrendChartProps {
   className?: string
 }
 
-const SERIES: { key: "email" | "whatsapp" | "linkedin"; label: string }[] = [
+const SERIES: { key: "email" | "whatsapp"; label: string }[] = [
   { key: "email", label: "Email" },
   { key: "whatsapp", label: "WhatsApp" },
-  { key: "linkedin", label: "LinkedIn" },
 ]
 
 /** Cross-campaign trend on the Overview page: stacked by channel, so volume and mix both show at a glance. */

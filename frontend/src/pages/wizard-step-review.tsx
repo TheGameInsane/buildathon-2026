@@ -12,7 +12,6 @@ import type { WizardValues } from "@/types/wizard"
 const CHANNEL_LABEL: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 function estimateProspectRange(values: WizardValues): [number, number] {

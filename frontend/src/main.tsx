@@ -1,20 +1,21 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter } from 'react-router-dom'
+import { RouterProvider } from 'react-router-dom'
 import './index.css'
-import App from './App.tsx'
+import { router } from './router.tsx'
+import { Toaster } from '@/components/ui/sonner'
 import { queryClient } from '@/lib/query-client'
+import { motion } from '@/lib/tokens'
 import { AuthProvider } from '@/lib/auth'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster duration={motion.toastAutoDismissMs} />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 )

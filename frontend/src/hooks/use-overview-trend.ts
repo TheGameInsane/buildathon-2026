@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { fetchOverviewTouchesTrend } from "@/api/metrics"
-import { overviewTrendPollIntervalMs } from "@/lib/tokens"
+import { graphRefreshIntervalMs } from "@/lib/tokens"
 
-/** A trend view, not a live counter: refreshes roughly every 90 minutes, independent of the 5s live poll. */
+/** A trend view, not a live counter: refreshes every 1 real minute (the product runs
+ * on compressed simulated days, so an hour-scale refresh would never fire during a
+ * demo), independent of the 5s live poll used for counters/statuses/the activity feed. */
 export function useOverviewTouchesTrend() {
   return useQuery({
     queryKey: ["overview-touches-trend"],
     queryFn: fetchOverviewTouchesTrend,
-    refetchInterval: overviewTrendPollIntervalMs,
+    refetchInterval: graphRefreshIntervalMs,
   })
 }

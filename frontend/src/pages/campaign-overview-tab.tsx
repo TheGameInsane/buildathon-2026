@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom"
+import { CampaignDraftGuidance } from "@/components/campaign-draft-guidance"
 import { FunnelBar } from "@/components/funnel-bar"
 import { MetricCard } from "@/components/metric-card"
 import { SegmentedBar } from "@/components/segmented-bar"
@@ -8,11 +9,10 @@ import { channelChartColors, channelIcons } from "@/lib/tokens"
 import { useCampaignContext } from "@/pages/use-campaign-context"
 import type { Channel } from "@/types/domain"
 
-const CHANNEL_ORDER: Channel[] = ["email", "whatsapp", "linkedin"]
+const CHANNEL_ORDER: Channel[] = ["email", "whatsapp"]
 const CHANNEL_LABEL: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 export function CampaignOverviewTab() {
@@ -50,6 +50,8 @@ export function CampaignOverviewTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <CampaignDraftGuidance campaign={campaign} />
+
       {campaign.completionFeedback && (
         <div className="rounded-[10px] border border-status-completed/30 bg-surface p-4">
           <p className="text-sm font-semibold text-text-primary">Completion feedback</p>
@@ -69,12 +71,11 @@ export function CampaignOverviewTab() {
 
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold tracking-wide text-text-secondary uppercase">Input</p>
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <MetricCard value={metrics.touchesSentToday} label="Touches sent today" />
           <MetricCard value={metrics.prospectsResearchedToday} label="Prospects researched today" />
           <MetricCard value={campaign.todayByChannel.email ?? 0} label="Email actions today" />
           <MetricCard value={campaign.todayByChannel.whatsapp ?? 0} label="WhatsApp actions today" />
-          <MetricCard value={campaign.todayByChannel.linkedin ?? 0} label="LinkedIn actions today" />
         </div>
       </div>
 

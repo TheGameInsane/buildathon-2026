@@ -1,7 +1,7 @@
 import { z } from "zod"
 import type { AgentName, Channel } from "@/types/domain"
 
-const CHANNELS: Channel[] = ["email", "whatsapp", "linkedin"]
+const CHANNELS: Channel[] = ["email", "whatsapp"]
 
 export const TONE_OPTIONS = [
   "Professional",

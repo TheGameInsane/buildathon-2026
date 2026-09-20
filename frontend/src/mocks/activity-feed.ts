@@ -31,16 +31,6 @@ const TEMPLATES: {
     groundedOk: null,
   },
   {
-    channel: "linkedin",
-    agentName: "Outreach Strategy",
-    actionText: "connection accepted",
-    campaignId: "ai-founders-outreach",
-    campaignName: "AI Founders Outreach",
-    reasonText: "Prospect accepted the connection request queued 2 days ago.",
-    promptVersion: 3,
-    groundedOk: null,
-  },
-  {
     channel: "whatsapp",
     agentName: "Conversation",
     actionText: "classified a reply as interested",

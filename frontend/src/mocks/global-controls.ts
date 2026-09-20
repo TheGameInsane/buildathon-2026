@@ -21,7 +21,7 @@ export function deactivateKillSwitch(): void {
   lastDeactivatedAt = new Date().toISOString()
 }
 
-const channelPauses: Record<Channel, boolean> = { email: false, whatsapp: false, linkedin: false }
+const channelPauses: Record<Channel, boolean> = { email: false, whatsapp: false }
 
 export function getChannelPauses(): Record<Channel, boolean> {
   return channelPauses

@@ -17,7 +17,6 @@ const TABS = [
   { to: "agents", label: "Agents" },
   { to: "prompts", label: "Prompts" },
   { to: "knowledge", label: "Knowledge" },
-  { to: "deliverability", label: "Deliverability" },
   { to: "settings", label: "Settings" },
 ] as const
 

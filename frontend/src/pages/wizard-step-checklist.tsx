@@ -1,49 +1,22 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { CheckCircle2 } from "lucide-react"
+import { toast } from "sonner"
 import { PreflightChecklist, type PreflightItem } from "@/components/preflight-checklist"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { useActivateCampaign } from "@/hooks/use-campaigns"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ApiError } from "@/lib/api-client"
+import { useActivateCampaign, useCampaignPreflight } from "@/hooks/use-campaigns"
 import type { Campaign } from "@/types/domain"
-import type { WizardValues } from "@/types/wizard"
 
 export interface WizardStepChecklistProps {
   campaign: Campaign
-  values: WizardValues
 }
 
-export function WizardStepChecklist({ campaign, values }: WizardStepChecklistProps) {
+export function WizardStepChecklist({ campaign }: WizardStepChecklistProps) {
   const activate = useActivateCampaign()
+  const { data: preflight, isLoading } = useCampaignPreflight(campaign.id)
   const navigate = useNavigate()
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [previewed, setPreviewed] = useState(false)
   const [justActivated, setJustActivated] = useState(false)
-
-  const items: PreflightItem[] = [
-    { label: "Audience defined", passed: Boolean(values.industry && values.geography) },
-    {
-      label: `Channels connected: ${values.channels.map((c) => c[0].toUpperCase() + c.slice(1)).join(", ") || "none"}`,
-      passed: values.channels.length > 0,
-    },
-    { label: "Tone selected", passed: values.tones.length > 0 },
-    { label: "Outreach sequence configured", passed: values.sequenceSteps.length > 0 },
-    { label: "Rep assigned", passed: values.repIds.length > 0 },
-    {
-      label: "Prompts active for all enabled agents",
-      passed: Object.values(values.agentPrompts).every((p) => p.trim().length > 0),
-    },
-    {
-      label: "Sample message previewed",
-      passed: previewed,
-      actionLabel: previewed ? undefined : "Preview now",
-      onAction: () => setPreviewOpen(true),
-    },
-  ]
 
   if (justActivated) {
     return (
@@ -53,6 +26,19 @@ export function WizardStepChecklist({ campaign, values }: WizardStepChecklistPro
       </div>
     )
   }
+
+  if (isLoading || !preflight) {
+    return <Skeleton className="h-64 w-full" />
+  }
+
+  // Real checks from the backend's own gate (GET /campaigns/:id/preflight) — the same
+  // checklist `/activate` enforces, not a client-side guess at readiness. Some of these
+  // (a company profile, 5+ KB docs, a live channel integration) can't be satisfied from
+  // inside this wizard at all; they link out to where they're actually fixed.
+  const items: PreflightItem[] = preflight.checks.map((check) => ({
+    label: check.message,
+    passed: check.ok,
+  }))
 
   return (
     <div className="flex flex-col gap-4">
@@ -65,31 +51,17 @@ export function WizardStepChecklist({ campaign, values }: WizardStepChecklistPro
               setJustActivated(true)
               setTimeout(() => navigate(`/campaigns/${campaign.id}`), 900)
             },
+            onError: (err) => {
+              const message =
+                err instanceof ApiError ? err.message : "Could not activate this campaign."
+              toast.error(message)
+            },
           })
         }}
       />
       <p className="text-xs text-text-secondary">
         {campaign.name} has been saved as a Draft. You can leave it here and finish later from Overview.
       </p>
-
-      <Dialog
-        open={previewOpen}
-        onOpenChange={(open) => {
-          setPreviewOpen(open)
-          if (!open) setPreviewed(true)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sample first message</DialogTitle>
-          </DialogHeader>
-          <p className="rounded-md bg-canvas p-3 text-sm text-text-primary">
-            "Hi, noticed {values.name || "your company"} has been scaling fast. Wanted to share how we've helped
-            similar {values.industry || "companies"} teams in {values.geography || "your region"} shorten their
-            sales cycle. Worth a quick chat?"
-          </p>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

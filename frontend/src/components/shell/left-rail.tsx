@@ -33,15 +33,23 @@ export function LeftRail({ inboxOpenCount }: LeftRailProps) {
             )
           }
         >
-          <span className="relative">
-            <item.icon className="size-5" />
-            {item.label === "Inbox" && inboxOpenCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-attention px-1 text-[10px] font-semibold text-white">
-                {inboxOpenCount}
+          {({ isActive }) => (
+            <>
+              <span className="relative">
+                <item.icon className="size-5" />
+                {item.label === "Inbox" && inboxOpenCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-status-attention px-1 text-[10px] font-semibold text-white">
+                    {inboxOpenCount}
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <span className="leading-tight">{item.label}</span>
+              <span className="leading-tight">{item.label}</span>
+              {isActive && (
+                /* Brand accent, used sparingly (spec): a thin indicator under the active item only. */
+                <span className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-brand-accent" />
+              )}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

@@ -1,12 +1,10 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Copy, FlaskConical, ListChecks, Radio, Target, UserPlus, Users, X } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { Copy, FlaskConical, Radio, Target, UserPlus, Users, X } from "lucide-react"
 import { cn } from "cn"
 import { ChannelIcon } from "@/components/channel-icon"
 import { CampaignCompletionModal } from "@/components/campaign-completion-modal"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { PlaybookCard } from "@/components/playbook-card"
-import { StageRuleBuilder } from "@/components/stage-rule-builder"
 import { Button } from "@/components/ui/button"
 import { Combobox } from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
@@ -32,11 +30,10 @@ import { JOB_TITLE_PRESETS } from "@/lib/job-titles"
 import { useCampaignContext } from "@/pages/use-campaign-context"
 import type { Campaign, CampaignSettingsData, Channel, DemoSpeed } from "@/types/domain"
 
-const ALL_CHANNELS: Channel[] = ["email", "whatsapp", "linkedin"]
+const ALL_CHANNELS: Channel[] = ["email", "whatsapp"]
 const CHANNEL_LABEL: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 const DEMO_SPEED_LABEL: Record<DemoSpeed, string> = {
@@ -45,12 +42,11 @@ const DEMO_SPEED_LABEL: Record<DemoSpeed, string> = {
   "1min": "1 day = 1 min",
 }
 
-type SectionKey = "targeting" | "channels" | "stages" | "reps"
+type SectionKey = "targeting" | "channels" | "reps"
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof Target }[] = [
   { key: "targeting", label: "Targeting", icon: Target },
   { key: "channels", label: "Channels & policy", icon: Radio },
-  { key: "stages", label: "Stages", icon: ListChecks },
   { key: "reps", label: "Reps", icon: Users },
 ]
 
@@ -141,13 +137,20 @@ function SettingsForm({
 }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isManager = user?.role === "manager"
+  // admin is a superset of manager (spec section 5's role model: "admin - everything").
+  const isManager = user?.role === "manager" || user?.role === "admin"
   const save = useSaveCampaignSettings(campaign.id)
   const lifecycle = useCampaignLifecycle()
   const submitFeedback = useSubmitCompletionFeedback()
   const { data: metrics } = useCampaignMetrics(campaign.id)
   const [form, setForm] = useState(initialSettings)
-  const [section, setSection] = useState<SectionKey>("targeting")
+  // ?section= lets other pages deep-link here (campaign-draft-guidance.tsx's
+  // "Assign a rep" / "Set targeting" links), falling back to Targeting for a bare visit.
+  const [searchParams] = useSearchParams()
+  const requestedSection = searchParams.get("section")
+  const [section, setSection] = useState<SectionKey>(
+    SECTIONS.some((s) => s.key === requestedSection) ? (requestedSection as SectionKey) : "targeting",
+  )
   const [lifecycleConfirm, setLifecycleConfirm] = useState<"complete" | "archive" | "delete" | null>(null)
   const [completionModalOpen, setCompletionModalOpen] = useState(false)
 
@@ -392,77 +395,6 @@ function SettingsForm({
               </div>
             </section>
           </>
-        )}
-
-        {effectiveSection === "stages" && (
-          <section className="flex flex-col gap-3 rounded-[10px] border border-border bg-surface p-4">
-            <p className="text-sm font-semibold text-text-primary">Stages: entry/exit criteria &amp; action windows</p>
-            <p className="text-xs text-text-secondary">
-              One rule per stage: field, comparator, value. An action window shows a countdown on the Prospects
-              table and escalates to the Inbox if it lapses unactioned.
-            </p>
-            <div className="flex flex-col gap-3">
-              {form.stages.map((stageConfig, i) => (
-                <div key={stageConfig.stage} className="rounded-md border border-border p-3">
-                  <p className="mb-2 text-sm font-medium text-text-primary">{stageConfig.stage}</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Entry criteria</Label>
-                      <StageRuleBuilder
-                        value={stageConfig.entryCriteria}
-                        onChange={(v) => {
-                          const stages = [...form.stages]
-                          stages[i] = { ...stageConfig, entryCriteria: v }
-                          setForm({ ...form, stages })
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Exit criteria</Label>
-                      <StageRuleBuilder
-                        value={stageConfig.exitCriteria}
-                        onChange={(v) => {
-                          const stages = [...form.stages]
-                          stages[i] = { ...stageConfig, exitCriteria: v }
-                          setForm({ ...form, stages })
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    <Label className="text-xs">Action window (hours, optional)</Label>
-                    <Input
-                      type="number"
-                      className="w-32"
-                      value={stageConfig.actionWindowHours ?? ""}
-                      placeholder="None"
-                      onChange={(e) => {
-                        const stages = [...form.stages]
-                        stages[i] = {
-                          ...stageConfig,
-                          actionWindowHours: e.target.value ? Number(e.target.value) : undefined,
-                        }
-                        setForm({ ...form, stages })
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <Button
-                type="button"
-                onClick={() => save.mutate({ stages: form.stages })}
-                disabled={save.isPending}
-                className="w-fit"
-              >
-                Save changes
-              </Button>
-              <PropagationNote />
-            </div>
-
-            <PlaybookCard campaignId={campaign.id} />
-          </section>
         )}
 
         {isManager && effectiveSection === "reps" && <CampaignRepsSection campaignId={campaign.id} />}

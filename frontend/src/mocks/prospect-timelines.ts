@@ -4,24 +4,23 @@ import type { Channel, PersonalizationTier, TimelineEvent } from "@/types/domain
 
 const store = new Map<string, TimelineEvent[]>()
 
-/** Resolved server-side, before any LLM call — so a templated LinkedIn note still feels branch-aware. */
-const LINKEDIN_TEMPLATE_NOTE =
+/** Resolved server-side, before any LLM call — so a templated first touch still feels branch-aware. */
+const TEMPLATE_NOTE =
   `Hi {{ prospect.firstName }}, following up on {{ prospect.company }}'s scaling plans. ` +
   `{% if prospect.segment == "voice_ai_founder" %}Curious how you're thinking about latency for real-time voice.` +
   `{% else %}Would love to trade notes on your infra roadmap.{% endif %}`
 
 /** Picks the tier for a prospect's first outbound touch. */
 function firstTouchPersonalization(
-  channel: Channel,
   n: number,
   firstName: string,
   company: string,
 ): { tier: PersonalizationTier; preview: string } {
-  if (channel === "linkedin") {
+  if (n % 3 === 0) {
     const segment = n % 2 === 0 ? "voice_ai_founder" : "other"
     return {
       tier: "template",
-      preview: renderTemplate(LINKEDIN_TEMPLATE_NOTE, { prospect: { firstName, company, segment } }),
+      preview: renderTemplate(TEMPLATE_NOTE, { prospect: { firstName, company, segment } }),
     }
   }
 
@@ -42,27 +41,14 @@ function buildTimeline(campaignId: string, prospectId: string): TimelineEvent[] 
   const profile = getProspectProfile(campaignId, prospectId)
   if (!profile) return []
 
-  const channels: Channel[] = ["email", "whatsapp", "linkedin"]
+  const channels: Channel[] = ["email", "whatsapp"]
   const n = Number(prospectId.split("-p")[1] ?? 0)
   const events: TimelineEvent[] = []
   let daysAgo = 6
 
-  events.push({
-    id: `${prospectId}-t1`,
-    channel: "linkedin",
-    kind: "received",
-    preview: "Connection accepted.",
-    reasonText: "",
-    groundedOk: null,
-    promptVersion: 1,
-    timestamp: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
-    details: baseDetails(0),
-  })
-  daysAgo -= 1
-
   const firstTouchChannel = channels[n % channels.length]
   const firstName = profile.name.split(" ")[0]
-  const firstTouch = firstTouchPersonalization(firstTouchChannel, n, firstName, profile.company)
+  const firstTouch = firstTouchPersonalization(n, firstName, profile.company)
   events.push({
     id: `${prospectId}-t2`,
     channel: firstTouchChannel,

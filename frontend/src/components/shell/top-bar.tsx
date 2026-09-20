@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom"
-import { LogOut, Settings as SettingsIcon, Sparkles } from "lucide-react"
+import { LogOut, Settings as SettingsIcon } from "lucide-react"
 import { AlertsStrip } from "@/components/shell/alerts-strip"
+import { Logo } from "@/components/logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -21,7 +22,7 @@ export interface TopBarProps {
   onActivateKillSwitch: () => void
 }
 
-const ROLE_LABEL = { manager: "Manager", rep: "Rep" } as const
+const ROLE_LABEL = { admin: "Admin", manager: "Manager", rep: "Rep", viewer: "Viewer" } as const
 
 export function TopBar({ inboxCounts, killSwitchActive, onActivateKillSwitch }: TopBarProps) {
   const { user, logout } = useAuth()
@@ -36,11 +37,10 @@ export function TopBar({ inboxCounts, killSwitchActive, onActivateKillSwitch }: 
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-surface px-3 sm:gap-4 sm:px-6">
-      <Link to="/" className="flex shrink-0 items-center gap-2 text-[15px] font-semibold text-text-primary">
-        <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-accent-cyan shadow-[0_0_12px_-2px_rgba(46,125,255,0.7)]">
-          <Sparkles className="size-4 text-white" />
-        </span>
-        <span className="hidden sm:inline">Autonomous SDR</span>
+      {/* "Nuncia" is short enough to always show — unlike the old "Autonomous SDR", it
+          never needed hiding on small screens. */}
+      <Link to="/" className="flex shrink-0 items-center">
+        <Logo />
       </Link>
 
       <div className="hidden flex-1 justify-center overflow-hidden md:flex">

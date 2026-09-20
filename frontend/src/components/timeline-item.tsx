@@ -12,7 +12,6 @@ import type { TimelineEvent } from "@/types/domain"
 const channelLabel: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 function headerLabel(event: TimelineEvent) {

@@ -40,7 +40,6 @@ export interface DailyChannelTouches {
   day: string
   email: number
   whatsapp: number
-  linkedin: number
 }
 
 export type AgentName =
@@ -63,7 +62,8 @@ export const AGENT_PIPELINE_ORDER: AgentName[] = [
 export interface Agent {
   name: AgentName
   status: "active" | "paused"
-  lastRunAt: string
+  /** null if this agent has never run for this campaign yet. */
+  lastRunAt: string | null
   activeVersion: number
   runsToday: number
   succeeded: number
@@ -116,8 +116,6 @@ export interface NextBestAction {
   draftContent?: string
   requiresApproval: boolean
   personalizationTier?: PersonalizationTier
-  /** LinkedIn actions are queued for a human (playing the rep) to execute by hand, not sent automatically. */
-  requiresManualExecution?: boolean
 }
 
 export type InboxItemKind = "approval" | "escalation" | "conflict" | "prompt_approval"
@@ -241,6 +239,8 @@ export interface KanbanProspect {
   name: string
   title: string
   company: string
+  /** Reference link only — LinkedIn is not an outreach channel; nothing is sent or received through it. */
+  linkedinUrl: string
   fitScore: number
   /** How engaged this prospect has been (opens, clicks, replies), 0-100. Independent of ICP fit. */
   engagementScore: number
@@ -300,53 +300,23 @@ export interface SuppressionEntry {
 }
 
 export type IntegrationStatus = "connected" | "disconnected"
+export type IntegrationMode = "sandbox" | "live"
 
 export interface IntegrationRecord {
   id: string
   name: string
   provider: string
   status: IntegrationStatus
-  lastCheckedAt: string
-}
-
-/** One connected mailbox's send health, shown in the Deliverability panel. Reuses the 5-value Status vocabulary. */
-export interface MailboxHealth {
-  id: string
-  email: string
-  sentToday: number
-  /** 0-100. */
-  bounceRate: number
-  health: Status
-  /** A stored counter that increments once per simulated day — no real warmup infrastructure. */
-  warmupProgressPct: number | null
+  mode: IntegrationMode
+  /** false = no row on the backend yet, this is a placeholder for a provider that's never been connected. */
+  configured: boolean
+  lastCheckedAt: string | null
 }
 
 export interface KillSwitchState {
   active: boolean
   activatedBy: string | null
   activatedAt: string | null
-}
-
-/** One row of the Playbooks table: a trigger the Outreach Strategy agent watches for, and the action it takes. */
-export interface PlaybookRule {
-  id: string
-  trigger: string
-  action: string
-}
-
-/** Structured JSON config the Outreach Strategy agent's prompt reads from — PlaybookCard renders/edits it as a table. */
-export interface Playbook {
-  campaignId: string
-  rules: PlaybookRule[]
-}
-
-/** Entry/exit criteria are simple field-comparison strings (e.g. "fit_score >= 70"), not evaluated expressions. */
-export interface StageConfig {
-  stage: FunnelStage
-  entryCriteria: string
-  exitCriteria: string
-  /** When set, a prospect entering this stage gets a countdown badge and escalates if it lapses unactioned. */
-  actionWindowHours?: number
 }
 
 export interface CampaignSettingsData {
@@ -367,8 +337,6 @@ export interface CampaignSettingsData {
   }
   reps: RepRef[]
   demoSpeedMultiplier: DemoSpeed
-  /** One entry per FUNNEL_STAGES index, manager-defined. */
-  stages: StageConfig[]
   /**
    * When on, activating a new prompt version doesn't apply immediately — it creates an
    * Inbox approval item instead, and only takes effect once approved. Default off.

@@ -1,3 +1,14 @@
+/**
+ * Left on mock data. The backend has real routes for all of this (`GET /inbox`,
+ * `POST /approvals/:id/approve|edit|reject`, `POST /conflicts/:id/resolve` —
+ * backend/api/inbox.py), but `GET /inbox`'s response is `{kind, id, campaign_id, reason,
+ * status, created_at}` only: no prospect name/company, no campaign name, no channel, no
+ * draft text, no flagged reason. `ApprovalCard`/`ConflictCard` need all of those to
+ * render, and there's no other route to backfill them from. Wiring the actions to real
+ * ids while fabricating the display fields would be worse than leaving this mocked, so
+ * it stays mocked until the backend's inbox response carries enough to render honestly.
+ * Escalations and prompt-approval requests also have no backend table at all yet.
+ */
 import { delay } from "@/api/delay"
 import { getInboxCounts, type InboxCounts } from "@/mocks/inbox-counts"
 import {

@@ -1,8 +1,18 @@
 import { Fragment, useMemo, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Search } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, ChevronDown, ChevronRight, Download, ExternalLink, FileUp, Loader2, Search, Sparkles } from "lucide-react"
 import { cn } from "cn"
 import { ChannelIcon } from "@/components/channel-icon"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -12,10 +22,93 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useProspects } from "@/hooks/use-prospects"
+import { useDiscoverProspects, useImportProspects, useProspects } from "@/hooks/use-prospects"
+import { downloadCsv, toCsv } from "@/lib/csv"
 import { useCampaignContext } from "@/pages/use-campaign-context"
 import { FUNNEL_STAGES, PROSPECT_STATUS_LABEL } from "@/types/domain"
 import type { KanbanProspect, ProspectStatus } from "@/types/domain"
+
+const IMPORT_ACCEPT = ".csv,.json"
+const IMPORT_ACCEPT_LABEL = "CSV or JSON"
+
+function ImportProspectsDialog({ campaignId }: { campaignId: string }) {
+  const [open, setOpen] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  const importProspects = useImportProspects(campaignId)
+
+  const reset = () => {
+    setFile(null)
+    importProspects.reset()
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) reset()
+      }}
+    >
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <FileUp /> Import prospects
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Import prospects</DialogTitle>
+          <DialogDescription>
+            Upload a CSV or JSON file — columns like name/email/company/role (or full_name,
+            email_address, etc.) are recognised automatically. Duplicates by email are skipped.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {importProspects.isSuccess ? (
+            <div className="flex flex-col items-center gap-1.5 rounded-[10px] border border-status-live/30 bg-status-live/10 p-6 text-center">
+              <CheckCircle2 className="size-6 text-status-live" />
+              <p className="text-sm font-medium text-text-primary">
+                {importProspects.data.imported} imported, {importProspects.data.skipped} skipped
+              </p>
+              <p className="text-xs text-text-secondary">{file?.name}</p>
+            </div>
+          ) : file ? (
+            <div className="flex items-center justify-between gap-2 rounded-[10px] border border-border bg-canvas p-3">
+              <span className="truncate text-sm text-text-primary">{file.name}</span>
+              {!importProspects.isPending && (
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  className="shrink-0 text-xs text-text-secondary hover:text-text-primary"
+                >
+                  Remove
+                </button>
+              )}
+              {importProspects.isPending && <span className="shrink-0 text-xs text-text-secondary">Importing…</span>}
+            </div>
+          ) : (
+            <FileDropzone accept={IMPORT_ACCEPT} acceptLabel={IMPORT_ACCEPT_LABEL} onFileSelected={setFile} />
+          )}
+
+          {importProspects.isError && (
+            <p className="text-xs text-status-attention">{importProspects.error.message}</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            {importProspects.isSuccess ? "Close" : "Cancel"}
+          </Button>
+          {!importProspects.isSuccess && (
+            <Button
+              type="button"
+              disabled={!file || importProspects.isPending}
+              onClick={() => file && importProspects.mutate(file)}
+            >
+              {importProspects.isPending ? "Importing…" : "Upload"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function fitBadgeClassName(score: number) {
   if (score >= 80) return "bg-status-live/10 text-status-live"
@@ -104,6 +197,7 @@ function sortProspects(list: KanbanProspect[], key: ColumnKey, direction: "asc" 
 export function CampaignProspectsTab() {
   const { campaign } = useCampaignContext()
   const { data: prospects, isLoading } = useProspects(campaign.id)
+  const discoverProspects = useDiscoverProspects()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
@@ -140,6 +234,21 @@ export function CampaignProspectsTab() {
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
         : { key, direction: "asc" },
     )
+  }
+
+  /** Exports exactly what's visible: the current search/stage/status filter, every column shown in the table. */
+  const handleDownloadCsv = () => {
+    const csv = toCsv(filtered, [
+      { header: "Name", value: (p) => p.name },
+      { header: "Company", value: (p) => p.company },
+      { header: "Stage", value: (p) => FUNNEL_STAGES[p.stageIndex] },
+      { header: "Fit score", value: (p) => p.fitScore },
+      { header: "Last touch", value: (p) => (p.daysSinceLastTouch === 0 ? "Today" : `${p.daysSinceLastTouch}d ago`) },
+      { header: "Next action", value: (p) => p.nextActionChannel ?? "None" },
+      { header: "LinkedIn URL", value: (p) => p.linkedinUrl },
+      { header: "Status", value: (p) => PROSPECT_STATUS_LABEL[p.status] },
+    ])
+    downloadCsv(`${campaign.name.toLowerCase().replace(/\s+/g, "-")}-prospects.csv`, csv)
   }
 
   return (
@@ -182,7 +291,22 @@ export function CampaignProspectsTab() {
           </SelectContent>
         </Select>
 
-        <span className="ml-auto text-xs text-text-secondary">{filtered.length.toLocaleString()} prospects</span>
+        <div className="ml-auto flex items-center gap-3">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => discoverProspects.mutate(campaign.id)}
+            disabled={discoverProspects.isPending}
+          >
+            {discoverProspects.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+            {discoverProspects.isPending ? "Finding prospects…" : "Discover prospects"}
+          </Button>
+          <ImportProspectsDialog campaignId={campaign.id} />
+          <Button type="button" variant="outline" size="sm" onClick={handleDownloadCsv} disabled={!filtered.length}>
+            <Download /> Download CSV
+          </Button>
+          <span className="text-xs text-text-secondary">{filtered.length.toLocaleString()} prospects</span>
+        </div>
       </div>
 
       {isLoading ? (
@@ -222,6 +346,7 @@ export function CampaignProspectsTab() {
                   </th>
                 ))}
                 <th className="px-3 py-2 font-medium">Next action</th>
+                <th className="px-3 py-2 font-medium">LinkedIn</th>
                 <th className="px-3 py-2 font-medium">Status</th>
               </tr>
             </thead>
@@ -285,6 +410,21 @@ export function CampaignProspectsTab() {
                         )}
                       </td>
                       <td className="px-3 py-2">
+                        {p.linkedinUrl ? (
+                          <a
+                            href={p.linkedinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-text-secondary hover:text-brand-600"
+                          >
+                            Profile <ExternalLink className="size-3" />
+                          </a>
+                        ) : (
+                          <span className="text-text-secondary">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
                         <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS_BADGE_CLASS[p.status])}>
                           {PROSPECT_STATUS_LABEL[p.status]}
                         </span>
@@ -293,7 +433,7 @@ export function CampaignProspectsTab() {
                     {expanded && (
                       <tr className="bg-surface">
                         <td />
-                        <td colSpan={COLUMNS.length + 2} className="px-3 py-3">
+                        <td colSpan={COLUMNS.length + 3} className="px-3 py-3">
                           <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-text-secondary">
                             <span>Engagement score: <span className="font-medium text-text-primary">{p.engagementScore}</span></span>
                             <span>Discovered: <span className="font-medium text-text-primary">{new Date(p.discoveredAt).toLocaleDateString()}</span></span>

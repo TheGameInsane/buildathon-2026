@@ -1,11 +1,14 @@
 import { useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { cn } from "cn"
+import { SettingsTabCompanyProfile } from "@/pages/settings-tab-company-profile"
 import { SettingsTabGlobalControls } from "@/pages/settings-tab-global-controls"
 import { SettingsTabIntegrations } from "@/pages/settings-tab-integrations"
 import { SettingsTabReps } from "@/pages/settings-tab-reps"
 import { SettingsTabSuppression } from "@/pages/settings-tab-suppression"
 
 const TABS = [
+  { key: "company", label: "Company Profile", component: SettingsTabCompanyProfile },
   { key: "reps", label: "Reps", component: SettingsTabReps },
   { key: "suppression", label: "Suppression List", component: SettingsTabSuppression },
   { key: "integrations", label: "Integrations", component: SettingsTabIntegrations },
@@ -14,9 +17,16 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"]
 
+/** `campaign-draft-guidance.tsx`'s unmet-check links land here via `?section=` (e.g.
+ * `/settings?section=reps`) — read once on mount so a direct link opens the right tab. */
+function initialTab(section: string | null): TabKey {
+  return TABS.some((t) => t.key === section) ? (section as TabKey) : "company"
+}
+
 export function Settings() {
-  const [tab, setTab] = useState<TabKey>("reps")
-  const ActiveTab = TABS.find((t) => t.key === tab)?.component ?? SettingsTabReps
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<TabKey>(() => initialTab(searchParams.get("section")))
+  const ActiveTab = TABS.find((t) => t.key === tab)?.component ?? SettingsTabCompanyProfile
 
   return (
     <div className="flex flex-col gap-4">

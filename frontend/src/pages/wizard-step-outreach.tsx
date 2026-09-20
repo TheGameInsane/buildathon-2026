@@ -6,11 +6,10 @@ import { Switch } from "@/components/ui/switch"
 import type { Channel } from "@/types/domain"
 import type { WizardValues } from "@/types/wizard"
 
-const ALL_CHANNELS: Channel[] = ["email", "whatsapp", "linkedin"]
+const ALL_CHANNELS: Channel[] = ["email", "whatsapp"]
 const CHANNEL_LABEL: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 export function WizardStepOutreach() {

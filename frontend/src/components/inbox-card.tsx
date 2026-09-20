@@ -302,8 +302,8 @@ export function ConflictCard({ item, onKeepDefault, onOverride, onSlowCadence, c
   return (
     <InboxCardBase
       icon={icons.conflict}
-      accentClassName="border-l-slate-500"
-      iconClassName="text-slate-500"
+      accentClassName="border-l-conflict-accent"
+      iconClassName="text-conflict-accent"
       context={`${item.prospectName} in 2 campaigns`}
       timestamp={item.timestamp}
       className={className}

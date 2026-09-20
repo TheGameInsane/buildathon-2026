@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { useBlocker, useNavigate } from "react-router-dom"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { FormProvider, useForm, useWatch } from "react-hook-form"
 import { Check } from "lucide-react"
 import { cn } from "cn"
 import { CampaignCard } from "@/components/campaign-card"
-import { ConfirmDialog } from "@/components/confirm-dialog"
+import { WizardExitDialog } from "@/components/wizard-exit-dialog"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCreateCampaignFromWizard } from "@/hooks/use-campaigns"
@@ -38,7 +38,6 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
   const currentUserName = user?.name ?? ""
   const [step, setStep] = useState(0)
   const [createdCampaign, setCreatedCampaign] = useState<Campaign | null>(null)
-  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const createFromWizard = useCreateCampaignFromWizard()
 
   const form = useForm<WizardValues>({
@@ -71,6 +70,24 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
   const isChecklistStep = step === WIZARD_STEPS.length - 1
   const StepComponent = STEP_COMPONENTS[step]
 
+  // Once the campaign has been created (the checklist step), it's already saved —
+  // nothing to intercept. Before that, leaving by any route (Cancel, an in-app
+  // navigation, or the tab closing) needs the manager to say what happens to it.
+  const exitNeedsDecision = !isChecklistStep
+  const blocker = useBlocker(exitNeedsDecision)
+
+  // Best-effort for closing the tab: the browser owns this dialog's buttons (it can't
+  // be replaced with the three-option one below), but it can still stop an accidental close.
+  useEffect(() => {
+    if (!exitNeedsDecision) return
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [exitNeedsDecision])
+
   const handleContinue = async () => {
     const valid = await trigger(STEP_FIELDS[step])
     if (!valid) return
@@ -88,20 +105,25 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
     }
   }
 
-  const handleCancelConfirm = () => {
+  const handleDontSave = () => blocker.state === "blocked" && blocker.proceed()
+
+  const handleSaveAsDraft = () => {
+    if (blocker.state !== "blocked") return
     const values = getValues()
-    if (!createdCampaign && values.name.trim()) {
-      createFromWizard.mutate(values)
-    }
-    navigate("/")
+    createFromWizard.mutate(
+      { ...values, name: values.name.trim() || "Untitled campaign" },
+      { onSuccess: () => blocker.proceed() },
+    )
   }
+
+  const handleCloseExitDialog = () => blocker.state === "blocked" && blocker.reset()
 
   return (
     <FormProvider {...form}>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-text-primary">New Campaign</h1>
-          <Button type="button" variant="outline" onClick={() => setCancelConfirmOpen(true)}>
+          <Button type="button" variant="outline" onClick={() => navigate("/")}>
             Cancel
           </Button>
         </div>
@@ -137,7 +159,7 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
           <div className="min-w-0">
             {isChecklistStep ? (
               createdCampaign ? (
-                <WizardStepChecklist campaign={createdCampaign} values={getValues()} />
+                <WizardStepChecklist campaign={createdCampaign} />
               ) : (
                 <Skeleton className="h-64 w-full" />
               )
@@ -165,14 +187,12 @@ function WizardForm({ defaultPrompts }: { defaultPrompts: Record<string, string>
         </div>
       </div>
 
-      <ConfirmDialog
-        open={cancelConfirmOpen}
-        onOpenChange={setCancelConfirmOpen}
-        title="Save as draft and exit?"
-        description="Your progress will be saved as a Draft campaign you can finish later from Overview."
-        confirmLabel="Save & exit"
-        tone="amber"
-        onConfirm={handleCancelConfirm}
+      <WizardExitDialog
+        open={blocker.state === "blocked"}
+        onDontSave={handleDontSave}
+        onSaveAsDraft={handleSaveAsDraft}
+        onClose={handleCloseExitDialog}
+        saving={createFromWizard.isPending}
       />
     </FormProvider>
   )

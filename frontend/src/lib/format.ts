@@ -1,3 +1,8 @@
+/** "Ada Cho" -> "ada-cho". Used to derive stand-in URLs/emails in mock data. */
+export function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z\s]/g, "").trim().replace(/\s+/g, "-")
+}
+
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 31536000],
   ["month", 2592000],

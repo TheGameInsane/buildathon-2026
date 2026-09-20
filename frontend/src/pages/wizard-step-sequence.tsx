@@ -17,7 +17,6 @@ import type { SequenceStep, WizardValues } from "@/types/wizard"
 const CHANNEL_LABEL: Record<Channel, string> = {
   email: "Email",
   whatsapp: "WhatsApp",
-  linkedin: "LinkedIn",
 }
 
 export function WizardStepSequence() {
@@ -27,7 +26,7 @@ export function WizardStepSequence() {
     formState: { errors },
   } = useFormContext<WizardValues>()
   const enabledChannels = watch("channels")
-  const channelOptions = enabledChannels.length > 0 ? enabledChannels : (["email", "whatsapp", "linkedin"] as Channel[])
+  const channelOptions = enabledChannels.length > 0 ? enabledChannels : (["email", "whatsapp"] as Channel[])
 
   return (
     <Field label="Outreach sequence" error={errors.sequenceSteps?.message as string | undefined}>

@@ -1,14 +1,15 @@
 import { useState } from "react"
-import { Plus } from "lucide-react"
+import { CheckCircle2, FileText, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -18,48 +19,47 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Textarea } from "@/components/ui/textarea"
-import { useAddKnowledgeDoc, useKnowledgeDocs } from "@/hooks/use-knowledge"
+import { useKnowledgeDocs, useUploadKnowledgeDoc } from "@/hooks/use-knowledge"
 import { timeAgo } from "@/lib/format"
 import { useCampaignContext } from "@/pages/use-campaign-context"
 import type { DocType } from "@/types/domain"
 
 const DOC_TYPES: DocType[] = ["Case study", "Playbook", "Objection handling", "Example email", "ICP definition"]
+const ACCEPT = ".pdf,.docx,.txt,.md"
+const ACCEPT_LABEL = "PDF, DOCX, TXT, or MD"
 
 function AddDocumentDialog({ campaignId }: { campaignId: string }) {
   const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState("")
   const [docType, setDocType] = useState<DocType>("Playbook")
-  const [content, setContent] = useState("")
-  const [sourceUrl, setSourceUrl] = useState("")
-  const addDoc = useAddKnowledgeDoc(campaignId)
-
-  const canSave = title.trim().length > 0 && content.trim().length > 0
+  const [file, setFile] = useState<File | null>(null)
+  const upload = useUploadKnowledgeDoc(campaignId)
 
   const reset = () => {
-    setTitle("")
     setDocType("Playbook")
-    setContent("")
-    setSourceUrl("")
+    setFile(null)
+    upload.reset()
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) reset()
+      }}
+    >
       <Button type="button" onClick={() => setOpen(true)}>
         <Plus /> Add document
       </Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add knowledge document</DialogTitle>
+          <DialogDescription>Upload a file — it's chunked and embedded automatically.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="doc-title">Title</Label>
-            <Input id="doc-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
             <Label>Document type</Label>
-            <Select value={docType} onValueChange={(v) => setDocType(v as DocType)}>
+            <Select value={docType} onValueChange={(v) => setDocType(v as DocType)} disabled={upload.isPending}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -72,30 +72,52 @@ function AddDocumentDialog({ campaignId }: { campaignId: string }) {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="doc-content">Content</Label>
-            <Textarea id="doc-content" value={content} onChange={(e) => setContent(e.target.value)} rows={5} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="doc-source">Source URL (optional)</Label>
-            <Input id="doc-source" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
-          </div>
+
+          {upload.isSuccess ? (
+            <div className="flex flex-col items-center gap-1.5 rounded-[10px] border border-status-live/30 bg-status-live/10 p-6 text-center">
+              <CheckCircle2 className="size-6 text-status-live" />
+              <p className="text-sm font-medium text-text-primary">{file?.name} uploaded</p>
+              <p className="text-xs text-text-secondary">It's being chunked and embedded into the knowledge base.</p>
+            </div>
+          ) : file ? (
+            <div className="flex items-center justify-between gap-2 rounded-[10px] border border-border bg-canvas p-3">
+              <span className="inline-flex min-w-0 items-center gap-2 text-sm text-text-primary">
+                <FileText className="size-4 shrink-0 text-text-secondary" />
+                <span className="truncate">{file.name}</span>
+              </span>
+              {!upload.isPending && (
+                <button
+                  type="button"
+                  onClick={() => setFile(null)}
+                  aria-label="Remove file"
+                  className="shrink-0 text-text-secondary hover:text-text-primary"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+              {upload.isPending && <span className="shrink-0 text-xs text-text-secondary">Uploading…</span>}
+            </div>
+          ) : (
+            <FileDropzone accept={ACCEPT} acceptLabel={ACCEPT_LABEL} onFileSelected={setFile} />
+          )}
+
+          {upload.isError && (
+            <p className="text-xs text-status-attention">{upload.error.message}</p>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            {upload.isSuccess ? "Close" : "Cancel"}
           </Button>
-          <Button
-            type="button"
-            disabled={!canSave}
-            onClick={() => {
-              addDoc.mutate({ title, docType, sourceUrl })
-              reset()
-              setOpen(false)
-            }}
-          >
-            Save
-          </Button>
+          {!upload.isSuccess && (
+            <Button
+              type="button"
+              disabled={!file || upload.isPending}
+              onClick={() => file && upload.mutate({ file, docType })}
+            >
+              {upload.isPending ? "Uploading…" : "Upload"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -134,9 +156,10 @@ export function CampaignKnowledgeTab() {
             <div className="flex flex-col divide-y divide-border rounded-[10px] border border-border bg-surface">
               {group.docs.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between gap-3 p-3">
-                  <a href={doc.sourceUrl} className="text-sm text-text-primary hover:text-brand-600 hover:underline">
+                  <span className="inline-flex items-center gap-1.5 text-sm text-text-primary">
+                    <FileText className="size-3.5 text-text-secondary" />
                     {doc.title}
-                  </a>
+                  </span>
                   <span className="shrink-0 text-xs text-text-secondary">Updated {timeAgo(doc.updatedAt)}</span>
                 </div>
               ))}

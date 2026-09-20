@@ -18,6 +18,9 @@
     --color-status-draft: var(--status-draft);
     --color-status-completed: var(--status-completed);
     --color-status-attention: var(--status-attention);
+    /* Not a status colour — see the two comments in :root below. */
+    --color-conflict-accent: var(--conflict-accent);
+    --color-brand-accent: var(--brand-accent);
     --color-surface: var(--surface);
     --color-surface-raised: var(--surface-raised);
     --color-canvas: var(--canvas);
@@ -67,6 +70,12 @@
     --status-draft: #6b7a99;
     --status-completed: #6366f1;
     --status-attention: #ef4444;
+    /* Muted violet, the Conflict card's accent only — never a status colour. */
+    --conflict-accent: #8a7ca8;
+    /* Nuncia's single brand accent (spec: used sparingly — wordmark, focus rings, the
+       active nav indicator, a subtle primary-button hover tint — never a status colour
+       and never a large surface). */
+    --brand-accent: #6043d3;
 
     --brand-50: #142248;
     --surface: #10162a;

@@ -8,7 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // Hover is a slight tint shift toward the brand accent (spec: used sparingly),
+        // not a second primary colour — the resting state stays plain brand blue.
+        default:
+          "bg-primary text-primary-foreground hover:bg-[color-mix(in_oklab,var(--brand-600)_85%,var(--brand-accent)_15%)]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

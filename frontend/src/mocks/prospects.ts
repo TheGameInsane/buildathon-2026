@@ -1,3 +1,4 @@
+import { slugify } from "@/lib/format"
 import type { Channel, KanbanProspect, ProspectStatus } from "@/types/domain"
 
 const NAMES = [
@@ -14,7 +15,7 @@ const NAMES = [
 ]
 const COMPANIES = ["Loop AI", "FinEdge", "Northwind", "Skyline Labs", "Vertex Cloud", "Anchorpoint", "Brightline"]
 const TITLES = ["CTO", "VP Engineering", "Head of Growth", "Founder"]
-const CHANNELS: Channel[] = ["email", "whatsapp", "linkedin"]
+const CHANNELS: Channel[] = ["email", "whatsapp"]
 
 const store = new Map<string, KanbanProspect[]>()
 
@@ -40,11 +41,13 @@ function seedProspects(campaignId: string): KanbanProspect[] {
       const status = deriveStatus(n, stageIndex)
       const hasReplied = status === "replied" || status === "engaged" || status === "interested" || status === "meeting_booked"
 
+      const name = NAMES[n % NAMES.length]
       prospects.push({
         id: `${campaignId}-p${n}`,
-        name: NAMES[n % NAMES.length],
+        name,
         title: TITLES[n % TITLES.length],
         company: COMPANIES[n % COMPANIES.length],
+        linkedinUrl: `https://www.linkedin.com/in/${slugify(name)}-${n}`,
         fitScore: 55 + ((n * 7) % 45),
         engagementScore: Math.min(100, stageIndex * 12 + ((n * 5) % 40)),
         status,

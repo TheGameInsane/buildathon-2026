@@ -7,6 +7,7 @@ import {
   createCampaignFromWizard,
   deleteCampaign,
   duplicateCampaign,
+  fetchCampaignPreflight,
   fetchCampaigns,
   pauseCampaign,
   resumeCampaign,
@@ -138,5 +139,15 @@ export function useActivateCampaign() {
   return useMutation({
     mutationFn: activateCampaign,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: campaignsQueryKey }),
+  })
+}
+
+const preflightQueryKey = (campaignId: string) => [...campaignsQueryKey, campaignId, "preflight"] as const
+
+/** The real gate `/activate` enforces — drives PreflightChecklist instead of a client-side guess. */
+export function useCampaignPreflight(campaignId: string) {
+  return useQuery({
+    queryKey: preflightQueryKey(campaignId),
+    queryFn: () => fetchCampaignPreflight(campaignId),
   })
 }
